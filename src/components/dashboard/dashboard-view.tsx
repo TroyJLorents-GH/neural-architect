@@ -1,10 +1,14 @@
 "use client";
 
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
+import { LogIn, LogOut, User, Sun, Moon } from "lucide-react";
 import { StatCards } from "./stat-cards";
 import { RepoCards } from "./repo-cards";
 import { PipelineList } from "./pipeline-list";
 import { AgentCards } from "./agent-cards";
 import { ModelCards } from "./model-cards";
+import { useGitHubRepos, useGitHubPipelines } from "@/lib/hooks";
 import {
   mockStats,
   mockRepos,
@@ -12,15 +16,88 @@ import {
   mockAgents,
   mockModels,
 } from "@/lib/mock-data";
+import type { DashboardStats } from "@/lib/types";
 
 interface DashboardViewProps {
   activeSection: string;
 }
 
 export function DashboardView({ activeSection }: DashboardViewProps) {
+  const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
+  const { data: repos, isLoading: reposLoading } = useGitHubRepos();
+  const { data: pipelines, isLoading: pipelinesLoading } =
+    useGitHubPipelines();
+
+  const isConnected = !!session?.accessToken;
+
+  // Use real data if connected, mock data as fallback
+  const displayRepos = isConnected && repos ? repos : mockRepos;
+  const displayPipelines =
+    isConnected && pipelines ? pipelines : mockPipelines;
+
+  const stats: DashboardStats = isConnected
+    ? {
+        totalRepos: displayRepos.length,
+        activePipelines: displayPipelines.filter(
+          (p) => p.status === "running" || p.status === "success"
+        ).length,
+        deployedAgents: mockAgents.length,
+        availableModels: mockModels.length,
+      }
+    : mockStats;
+
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-7xl space-y-8 p-8">
+      {/* Top bar */}
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-4 md:px-8 py-3 backdrop-blur-sm">
+        <div className="w-10 md:w-0" /> {/* Spacer for mobile hamburger */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title="Toggle theme"
+          >
+            <Sun className="h-4 w-4 hidden dark:block" />
+            <Moon className="h-4 w-4 block dark:hidden" />
+          </button>
+        {isConnected ? (
+          <>
+            <div className="flex items-center gap-2 text-sm">
+              {session?.user?.image ? (
+                <img
+                  src={session.user.image}
+                  alt=""
+                  className="h-6 w-6 rounded-full"
+                />
+              ) : (
+                <User className="h-4 w-4" />
+              )}
+              <span className="text-muted-foreground">
+                {session?.user?.name}
+              </span>
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => signIn("github")}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <LogIn className="h-4 w-4" />
+            Sign in with GitHub
+          </button>
+        )}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:space-y-8 md:p-8">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">
@@ -45,48 +122,92 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             {activeSection === "settings" &&
               "Manage connected accounts and preferences"}
           </p>
+          {!isConnected && (
+            <p className="mt-2 text-xs text-amber-500">
+              Showing demo data — sign in with GitHub to see your real repos and
+              pipelines
+            </p>
+          )}
         </div>
 
         {/* Dashboard overview */}
         {activeSection === "dashboard" && (
           <>
-            <StatCards stats={mockStats} />
+            <StatCards stats={stats} />
             <ModelCards models={mockModels} />
             <AgentCards agents={mockAgents} />
-            <RepoCards repos={mockRepos} />
-            <PipelineList pipelines={mockPipelines} />
+            <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
+            <PipelineList
+              pipelines={displayPipelines}
+              loading={pipelinesLoading && isConnected}
+            />
           </>
         )}
 
         {/* Individual sections */}
-        {activeSection === "repositories" && <RepoCards repos={mockRepos} />}
+        {activeSection === "repositories" && (
+          <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
+        )}
         {activeSection === "pipelines" && (
-          <PipelineList pipelines={mockPipelines} />
+          <PipelineList
+            pipelines={displayPipelines}
+            loading={pipelinesLoading && isConnected}
+          />
         )}
         {activeSection === "agents" && <AgentCards agents={mockAgents} />}
         {activeSection === "models" && <ModelCards models={mockModels} />}
-        {activeSection === "settings" && <SettingsView />}
+        {activeSection === "settings" && (
+          <SettingsView
+            isConnected={isConnected}
+            username={session?.user?.name}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function SettingsView() {
+function SettingsView({
+  isConnected,
+  username,
+}: {
+  isConnected: boolean;
+  username?: string | null;
+}) {
+  const { theme, setTheme } = useTheme();
   const providers = [
     {
       name: "GitHub",
-      connected: true,
-      username: "TroyJLorents-GH",
+      connected: isConnected,
+      username: username || null,
       icon: "⬡",
+      onConnect: () => signIn("github"),
+      onDisconnect: () => signOut(),
     },
-    { name: "GitLab", connected: false, username: null, icon: "◆" },
+    {
+      name: "GitLab",
+      connected: false,
+      username: null,
+      icon: "◆",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
     {
       name: "Azure DevOps",
       connected: false,
       username: null,
       icon: "☁",
+      onConnect: () => {},
+      onDisconnect: () => {},
     },
-    { name: "AWS", connected: false, username: null, icon: "◈" },
+    {
+      name: "AWS",
+      connected: false,
+      username: null,
+      icon: "◈",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
   ];
 
   return (
@@ -103,7 +224,7 @@ function SettingsView() {
                 <span className="text-xl">{p.icon}</span>
                 <div>
                   <p className="text-sm font-medium">{p.name}</p>
-                  {p.connected && (
+                  {p.connected && p.username && (
                     <p className="text-xs text-muted-foreground">
                       {p.username}
                     </p>
@@ -111,6 +232,7 @@ function SettingsView() {
                 </div>
               </div>
               <button
+                onClick={p.connected ? p.onDisconnect : p.onConnect}
                 className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                   p.connected
                     ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
@@ -133,9 +255,21 @@ function SettingsView() {
               Switch between light and dark mode
             </p>
           </div>
-          <button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors">
-            Toggle Theme
-          </button>
+          <div className="flex gap-2">
+            {["light", "dark", "system"].map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors capitalize ${
+                  theme === t
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border hover:bg-accent"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

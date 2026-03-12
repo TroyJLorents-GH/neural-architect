@@ -28,7 +28,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyLorents/neural-architect",
     isPrivate: false,
     defaultBranch: "main",
-    commitActivity: [3, 7, 5, 12, 8, 4, 9],
+    commitActivity: [2, 5, 3, 7, 5, 12, 8, 4, 9, 6, 11, 3],
     provider: "github",
   },
   {
@@ -46,7 +46,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyLorents/resume-match-ai",
     isPrivate: false,
     defaultBranch: "main",
-    commitActivity: [1, 4, 2, 6, 3, 5, 2],
+    commitActivity: [0, 1, 4, 2, 6, 3, 5, 2, 4, 1, 3, 2],
     provider: "github",
   },
   {
@@ -64,7 +64,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyJLorents-GH/MyStudentApi",
     isPrivate: false,
     defaultBranch: "main",
-    commitActivity: [0, 2, 1, 3, 0, 1, 4],
+    commitActivity: [1, 0, 2, 1, 3, 0, 1, 4, 2, 0, 3, 1],
     provider: "github",
   },
   {
@@ -81,7 +81,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyLorents/agent-demo",
     isPrivate: false,
     defaultBranch: "main",
-    commitActivity: [2, 0, 1, 0, 3, 1, 0],
+    commitActivity: [0, 2, 0, 1, 0, 3, 1, 0, 2, 1, 0, 1],
     provider: "github",
   },
   {
@@ -99,7 +99,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyLorents/job-advisor",
     isPrivate: false,
     defaultBranch: "main",
-    commitActivity: [0, 1, 0, 2, 1, 0, 1],
+    commitActivity: [1, 0, 1, 0, 2, 1, 0, 1, 0, 2, 0, 1],
     provider: "github",
   },
   {
@@ -117,7 +117,7 @@ export const mockRepos: Repository[] = [
     url: "https://github.com/TroyLorents/doc-intelligence-api",
     isPrivate: true,
     defaultBranch: "main",
-    commitActivity: [1, 0, 3, 2, 0, 0, 1],
+    commitActivity: [0, 1, 0, 3, 2, 0, 0, 1, 1, 0, 2, 0],
     provider: "github",
   },
 ];

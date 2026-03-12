@@ -62,16 +62,17 @@ function timeAgo(dateStr: string): string {
 
 interface PipelineListProps {
   pipelines: Pipeline[];
+  loading?: boolean;
 }
 
-export function PipelineList({ pipelines }: PipelineListProps) {
+export function PipelineList({ pipelines, loading }: PipelineListProps) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Pipelines</h2>
-        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          View All <ArrowRight className="h-4 w-4" />
-        </button>
+        <span className="text-xs text-muted-foreground">
+          {pipelines.length} runs
+        </span>
       </div>
       <Card>
         <CardContent className="p-0">
@@ -82,7 +83,7 @@ export function PipelineList({ pipelines }: PipelineListProps) {
               return (
                 <div
                   key={pipeline.id}
-                  className="flex items-center justify-between px-6 py-4 hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className={`rounded-lg p-2 ${config.bg}`}>
@@ -101,14 +102,14 @@ export function PipelineList({ pipelines }: PipelineListProps) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 md:gap-4">
                     <Badge
                       variant="outline"
                       className={`text-xs ${config.color}`}
                     >
                       {config.label}
                     </Badge>
-                    <span className="text-xs text-muted-foreground w-14 text-right">
+                    <span className="hidden sm:inline text-xs text-muted-foreground w-14 text-right">
                       {formatDuration(pipeline.duration)}
                     </span>
                     <span className="text-xs text-muted-foreground w-16 text-right">
