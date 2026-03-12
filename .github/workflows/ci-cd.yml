@@ -1,0 +1,89 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  IMAGE_NAME: neural-architect
+
+jobs:
+  # Build and test
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: placeholder-for-build
+          GITHUB_CLIENT_ID: placeholder-for-build
+          GITHUB_CLIENT_SECRET: placeholder-for-build
+
+  # Build and push Docker image (only on push to master)
+  docker:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ACR
+        if: env.ACR_LOGIN_SERVER != ''
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ github.sha }} -t $ACR_LOGIN_SERVER/$IMAGE_NAME:latest .
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:latest
+
+  # Deploy to AKS (only on push to master, requires docker job)
+  deploy:
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        if: env.ACR_LOGIN_SERVER != ''
+        uses: azure/setup-kubectl@v4
+
+      - name: Set AKS context
+        if: env.ACR_LOGIN_SERVER != ''
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          admin: false
+
+      - name: Deploy to AKS
+        if: env.ACR_LOGIN_SERVER != ''
+        run: |
+          sed -i "s|neuralarchitectacr.azurecr.io/neural-architect:latest|$ACR_LOGIN_SERVER/$IMAGE_NAME:${{ github.sha }}|g" k8s/deployment.yml
+          kubectl apply -f k8s/deployment.yml
+          kubectl rollout status deployment/neural-architect --timeout=120s

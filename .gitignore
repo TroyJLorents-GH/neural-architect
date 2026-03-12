@@ -1,5 +1,12 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# secrets
+k8s/secrets.yml
+*.tfvars
+.terraform/
+*.tfstate
+*.tfstate.backup
+
 # dependencies
 /node_modules
 /.pnp
