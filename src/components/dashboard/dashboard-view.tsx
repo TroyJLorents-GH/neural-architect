@@ -8,7 +8,12 @@ import { RepoCards } from "./repo-cards";
 import { PipelineList } from "./pipeline-list";
 import { AgentCards } from "./agent-cards";
 import { ModelCards } from "./model-cards";
-import { useGitHubRepos, useGitHubPipelines } from "@/lib/hooks";
+import {
+  useGitHubRepos,
+  useGitHubPipelines,
+  useAzureAgents,
+  useAzureModels,
+} from "@/lib/hooks";
 import {
   mockStats,
   mockRepos,
@@ -28,6 +33,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const { data: repos, isLoading: reposLoading } = useGitHubRepos();
   const { data: pipelines, isLoading: pipelinesLoading } =
     useGitHubPipelines();
+  const { data: agents } = useAzureAgents();
+  const { data: models } = useAzureModels();
 
   const isConnected = !!session?.accessToken;
 
@@ -35,6 +42,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const displayRepos = isConnected && repos ? repos : mockRepos;
   const displayPipelines =
     isConnected && pipelines ? pipelines : mockPipelines;
+  const displayAgents = agents || mockAgents;
+  const displayModels = models || mockModels;
 
   const stats: DashboardStats = isConnected
     ? {
@@ -42,8 +51,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         activePipelines: displayPipelines.filter(
           (p) => p.status === "running" || p.status === "success"
         ).length,
-        deployedAgents: mockAgents.length,
-        availableModels: mockModels.length,
+        deployedAgents: displayAgents.length,
+        availableModels: displayModels.length,
       }
     : mockStats;
 
@@ -134,8 +143,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         {activeSection === "dashboard" && (
           <>
             <StatCards stats={stats} />
-            <ModelCards models={mockModels} />
-            <AgentCards agents={mockAgents} />
+            <ModelCards models={displayModels} />
+            <AgentCards agents={displayAgents} />
             <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
             <PipelineList
               pipelines={displayPipelines}
@@ -154,8 +163,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             loading={pipelinesLoading && isConnected}
           />
         )}
-        {activeSection === "agents" && <AgentCards agents={mockAgents} />}
-        {activeSection === "models" && <ModelCards models={mockModels} />}
+        {activeSection === "agents" && <AgentCards agents={displayAgents} />}
+        {activeSection === "models" && <ModelCards models={displayModels} />}
         {activeSection === "settings" && (
           <SettingsView
             isConnected={isConnected}
