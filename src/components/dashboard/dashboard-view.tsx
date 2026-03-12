@@ -181,6 +181,7 @@ function SettingsView({
       connected: isConnected,
       username: username || null,
       icon: "⬡",
+      available: true,
       onConnect: () => signIn("github"),
       onDisconnect: () => signOut(),
     },
@@ -189,6 +190,7 @@ function SettingsView({
       connected: false,
       username: null,
       icon: "◆",
+      available: false,
       onConnect: () => {},
       onDisconnect: () => {},
     },
@@ -197,6 +199,7 @@ function SettingsView({
       connected: false,
       username: null,
       icon: "☁",
+      available: false,
       onConnect: () => {},
       onDisconnect: () => {},
     },
@@ -205,15 +208,19 @@ function SettingsView({
       connected: false,
       username: null,
       icon: "◈",
+      available: false,
       onConnect: () => {},
       onDisconnect: () => {},
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h3 className="mb-4 text-lg font-semibold">Connected Accounts</h3>
+        <h3 className="mb-1 text-lg font-semibold">Connected Accounts</h3>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Connect your accounts to pull in repos, pipelines, and infrastructure data
+        </p>
         <div className="space-y-3">
           {providers.map((p) => (
             <div
@@ -223,7 +230,15 @@ function SettingsView({
               <div className="flex items-center gap-3">
                 <span className="text-xl">{p.icon}</span>
                 <div>
-                  <p className="text-sm font-medium">{p.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{p.name}</p>
+                    {p.connected && (
+                      <span className="flex items-center gap-1 text-xs text-emerald-500">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Connected
+                      </span>
+                    )}
+                  </div>
                   {p.connected && p.username && (
                     <p className="text-xs text-muted-foreground">
                       {p.username}
@@ -231,23 +246,32 @@ function SettingsView({
                   )}
                 </div>
               </div>
-              <button
-                onClick={p.connected ? p.onDisconnect : p.onConnect}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                  p.connected
-                    ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
-              >
-                {p.connected ? "Disconnect" : "Connect"}
-              </button>
+              {p.available ? (
+                <button
+                  onClick={p.connected ? p.onDisconnect : p.onConnect}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    p.connected
+                      ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
+                >
+                  {p.connected ? "Disconnect" : "Connect"}
+                </button>
+              ) : (
+                <span className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground">
+                  Coming soon
+                </span>
+              )}
             </div>
           ))}
         </div>
       </div>
 
       <div>
-        <h3 className="mb-4 text-lg font-semibold">Appearance</h3>
+        <h3 className="mb-1 text-lg font-semibold">Appearance</h3>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Customize the look and feel of your dashboard
+        </p>
         <div className="flex items-center justify-between rounded-lg border border-border p-4">
           <div>
             <p className="text-sm font-medium">Theme</p>
@@ -260,7 +284,7 @@ function SettingsView({
               <button
                 key={t}
                 onClick={() => setTheme(t)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors capitalize ${
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
                   theme === t
                     ? "bg-primary text-primary-foreground"
                     : "border border-border hover:bg-accent"
@@ -269,6 +293,27 @@ function SettingsView({
                 {t}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1 text-lg font-semibold">Data</h3>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Storage and caching configuration
+        </p>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="text-sm font-medium">Azure Cosmos DB</p>
+              <p className="text-xs text-muted-foreground">
+                Persist user preferences and cached data
+              </p>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Optional
+            </span>
           </div>
         </div>
       </div>

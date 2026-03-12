@@ -1,9 +1,10 @@
 "use client";
 
-import { Star, GitFork, CircleDot, Lock, ArrowRight, ExternalLink } from "lucide-react";
+import { Star, GitFork, CircleDot, Lock, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "./sparkline";
+import { RepoGridSkeleton } from "./skeletons";
 import type { Repository } from "@/lib/types";
 
 const languageColors: Record<string, string> = {
@@ -33,12 +34,8 @@ export function RepoCards({ repos, loading }: RepoCardsProps) {
           {repos.length} repos
         </span>
       </div>
-      {loading && (
-        <p className="text-sm text-muted-foreground animate-pulse">
-          Loading repositories...
-        </p>
-      )}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {loading && <RepoGridSkeleton />}
+      {!loading && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {repos.map((repo) => (
           <a
             key={repo.id}
@@ -118,7 +115,7 @@ export function RepoCards({ repos, loading }: RepoCardsProps) {
             </Card>
           </a>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }

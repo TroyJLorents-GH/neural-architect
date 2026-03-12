@@ -6,9 +6,9 @@ import {
   Loader2,
   Clock,
   Ban,
-  ArrowRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { PipelineListSkeleton } from "./skeletons";
 import { Badge } from "@/components/ui/badge";
 import type { Pipeline } from "@/lib/types";
 
@@ -74,7 +74,8 @@ export function PipelineList({ pipelines, loading }: PipelineListProps) {
           {pipelines.length} runs
         </span>
       </div>
-      <Card>
+      {loading && <PipelineListSkeleton />}
+      {!loading && <Card>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {pipelines.map((pipeline) => {
@@ -121,7 +122,7 @@ export function PipelineList({ pipelines, loading }: PipelineListProps) {
             })}
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
