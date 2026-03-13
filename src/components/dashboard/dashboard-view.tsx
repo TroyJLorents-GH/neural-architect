@@ -1,13 +1,31 @@
 "use client";
 
+import { useState, useCallback, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { LogIn, LogOut, User, Sun, Moon } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { StatCards } from "./stat-cards";
 import { RepoCards } from "./repo-cards";
 import { PipelineList } from "./pipeline-list";
 import { AgentCards } from "./agent-cards";
 import { ModelCards } from "./model-cards";
+import { InfraCards } from "./infra-cards";
+import { DashboardSection } from "./dashboard-section";
 import {
   useGitHubRepos,
   useGitHubPipelines,
@@ -17,6 +35,7 @@ import {
   useOllamaModels,
   useVercelDeployments,
   useProviderStatus,
+  useAzureDiscovery,
 } from "@/lib/hooks";
 import {
   mockStats,
@@ -26,10 +45,29 @@ import {
   mockModels,
 } from "@/lib/mock-data";
 import type { DashboardStats } from "@/lib/types";
-import { InfraCards } from "./infra-cards";
+
+const STORAGE_KEY = "neural-architect-section-order";
+const DEFAULT_ORDER = ["models", "agents", "infrastructure", "repositories", "pipelines"];
 
 interface DashboardViewProps {
   activeSection: string;
+}
+
+function loadSectionOrder(): string[] {
+  if (typeof window === "undefined") return DEFAULT_ORDER;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge in any new sections that weren't saved before
+      const merged = [...parsed];
+      for (const id of DEFAULT_ORDER) {
+        if (!merged.includes(id)) merged.push(id);
+      }
+      return merged;
+    }
+  } catch {}
+  return DEFAULT_ORDER;
 }
 
 export function DashboardView({ activeSection }: DashboardViewProps) {
@@ -43,6 +81,31 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const { data: infra } = useInfrastructure();
   const { data: ollamaData } = useOllamaModels();
   const { data: vercelData } = useVercelDeployments();
+
+  const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_ORDER);
+
+  // Load saved order on mount
+  useEffect(() => {
+    setSectionOrder(loadSectionOrder());
+  }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSectionOrder((prev) => {
+        const oldIndex = prev.indexOf(String(active.id));
+        const newIndex = prev.indexOf(String(over.id));
+        const newOrder = arrayMove(prev, oldIndex, newIndex);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+  }, []);
 
   const isConnected = !!session?.accessToken;
 
@@ -66,6 +129,46 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         infraResources: displayInfra.length,
       }
     : mockStats;
+
+  const sectionContent: Record<string, React.ReactNode> = {
+    models: (
+      <DashboardSection
+        id="models"
+        title="Models"
+        count={displayModels.length}
+        badge={
+          ollamaData && ollamaData.total > 0 ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {ollamaData.running} local
+            </span>
+          ) : undefined
+        }
+      >
+        <ModelCards models={displayModels} ollamaData={ollamaData} compact />
+      </DashboardSection>
+    ),
+    agents: (
+      <DashboardSection id="agents" title="AI Agents" count={displayAgents.length}>
+        <AgentCards agents={displayAgents} compact />
+      </DashboardSection>
+    ),
+    infrastructure: (
+      <DashboardSection id="infrastructure" title="Infrastructure" count={displayInfra.length}>
+        <InfraCards resources={displayInfra} vercelData={vercelData} compact />
+      </DashboardSection>
+    ),
+    repositories: (
+      <DashboardSection id="repositories" title="Repositories" count={displayRepos.length}>
+        <RepoCards repos={displayRepos} loading={reposLoading && isConnected} compact />
+      </DashboardSection>
+    ),
+    pipelines: (
+      <DashboardSection id="pipelines" title="Pipelines" count={displayPipelines.length}>
+        <PipelineList pipelines={displayPipelines} loading={pipelinesLoading && isConnected} compact />
+      </DashboardSection>
+    ),
+  };
 
   return (
     <div className="flex-1 overflow-auto">
@@ -153,18 +256,26 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
           )}
         </div>
 
-        {/* Dashboard overview */}
+        {/* Dashboard overview — draggable sections */}
         {activeSection === "dashboard" && (
           <>
             <StatCards stats={stats} />
-            <ModelCards models={displayModels} ollamaData={ollamaData} />
-            <AgentCards agents={displayAgents} />
-            <InfraCards resources={displayInfra} vercelData={vercelData} />
-            <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
-            <PipelineList
-              pipelines={displayPipelines}
-              loading={pipelinesLoading && isConnected}
-            />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={sectionOrder}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-6 md:space-y-8">
+                  {sectionOrder.map((id) => (
+                    <div key={id}>{sectionContent[id]}</div>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </>
         )}
 
@@ -203,6 +314,14 @@ function SettingsView({
 }) {
   const { theme, setTheme } = useTheme();
   const { data: providerStatus } = useProviderStatus();
+  const { data: azureDiscovery } = useAzureDiscovery();
+
+  const azureConnected = azureDiscovery?.connected || !!providerStatus?.azure;
+  const azureDetail = azureDiscovery?.connected
+    ? `${azureDiscovery.subscriptions.length} subscription${azureDiscovery.subscriptions.length !== 1 ? "s" : ""} · ${azureDiscovery.aiServices.length} AI services`
+    : providerStatus?.azureFoundry
+    ? "Foundry + Models (Service Principal)"
+    : null;
 
   const providers = [
     {
@@ -217,14 +336,14 @@ function SettingsView({
     },
     {
       name: "Azure",
-      connected: !!providerStatus?.azure,
-      username: providerStatus?.azureFoundry ? "Foundry + Models" : null,
+      connected: azureConnected,
+      username: azureDetail,
       icon: "☁",
       available: true,
       category: "cloud",
-      description: "Foundry agents, models, and infrastructure",
-      envHint: "Set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET in .env.local",
-      onConnect: () => {},
+      description: "Sign in with Microsoft to auto-discover subscriptions, AI services, and Foundry endpoints",
+      envHint: azureConnected ? undefined : "Or set AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET in .env.local",
+      onConnect: () => signIn("microsoft-entra-id"),
       onDisconnect: () => {},
     },
     {
@@ -371,6 +490,78 @@ function SettingsView({
           ))}
         </div>
       </div>
+
+      {/* Azure Discovery Details */}
+      {azureDiscovery?.connected && (
+        <div>
+          <h3 className="mb-1 text-lg font-semibold">Azure Discovery</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Auto-discovered from your {azureDiscovery.tokenSource === "oauth" ? "Microsoft account" : "Service Principal"}
+          </p>
+          <div className="space-y-3">
+            {/* Subscriptions */}
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-sm font-medium mb-2">Subscriptions</p>
+              <div className="space-y-2">
+                {azureDiscovery.subscriptions.map((sub) => (
+                  <div key={sub.subscriptionId} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{sub.displayName}</span>
+                    <span className={`flex items-center gap-1.5 text-xs ${sub.state === "Enabled" ? "text-emerald-500" : "text-muted-foreground"}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${sub.state === "Enabled" ? "bg-emerald-500" : "bg-gray-400"}`} />
+                      {sub.state}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Services / Foundry Endpoints */}
+            {azureDiscovery.aiServices.length > 0 && (
+              <div className="rounded-lg border border-border p-4">
+                <p className="text-sm font-medium mb-2">AI Services & Foundry Endpoints</p>
+                <div className="space-y-2">
+                  {azureDiscovery.aiServices.map((svc) => (
+                    <div key={svc.id} className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm text-muted-foreground">{svc.name}</span>
+                        {svc.endpoint && (
+                          <p className="text-xs text-muted-foreground/60 font-mono truncate max-w-sm">
+                            {svc.endpoint}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{svc.location}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resource Summary */}
+            {azureDiscovery.resourceSummary && (
+              <div className="rounded-lg border border-border p-4">
+                <p className="text-sm font-medium mb-2">Resource Summary</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "VMs", count: azureDiscovery.resourceSummary.vms },
+                    { label: "App Services", count: azureDiscovery.resourceSummary.appServices },
+                    { label: "Databases", count: azureDiscovery.resourceSummary.databases },
+                    { label: "Containers", count: azureDiscovery.resourceSummary.containers },
+                    { label: "AI Services", count: azureDiscovery.resourceSummary.ai },
+                    { label: "Storage", count: azureDiscovery.resourceSummary.storage },
+                    { label: "Total", count: azureDiscovery.resourceSummary.total },
+                  ].map((item) => (
+                    <div key={item.label} className="text-center">
+                      <p className="text-lg font-semibold">{item.count}</p>
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div>
         <h3 className="mb-1 text-lg font-semibold">Appearance</h3>

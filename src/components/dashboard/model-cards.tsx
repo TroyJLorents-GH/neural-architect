@@ -36,25 +36,28 @@ interface OllamaData {
 interface ModelCardsProps {
   models: AIModel[];
   ollamaData?: OllamaData;
+  compact?: boolean;
 }
 
-export function ModelCards({ models, ollamaData }: ModelCardsProps) {
+export function ModelCards({ models, ollamaData, compact }: ModelCardsProps) {
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">Available Models</h2>
-          {ollamaData && ollamaData.total > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {ollamaData.running} local running
-            </span>
-          )}
+      {!compact && (
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold">Available Models</h2>
+            {ollamaData && ollamaData.total > 0 && (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {ollamaData.running} local running
+              </span>
+            )}
+          </div>
+          <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            View All <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
-        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          View All <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {models.map((model) => {
           const colors = providerColors[model.provider] || {

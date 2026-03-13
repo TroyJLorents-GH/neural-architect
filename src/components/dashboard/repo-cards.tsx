@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, GitFork, CircleDot, Lock, ExternalLink, ChevronDown } from "lucide-react";
+import { Star, GitFork, CircleDot, Lock, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "./sparkline";
@@ -25,9 +25,10 @@ interface RepoCardsProps {
   repos: Repository[];
   loading?: boolean;
   initialLimit?: number;
+  compact?: boolean;
 }
 
-export function RepoCards({ repos, loading, initialLimit = 6 }: RepoCardsProps) {
+export function RepoCards({ repos, loading, initialLimit = 6, compact }: RepoCardsProps) {
   const [showAll, setShowAll] = useState(false);
 
   // Sort by most recent commit activity (updatedAt)
@@ -38,12 +39,14 @@ export function RepoCards({ repos, loading, initialLimit = 6 }: RepoCardsProps) 
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Repositories</h2>
-        <span className="text-xs text-muted-foreground">
-          {repos.length} repos
-        </span>
-      </div>
+      {!compact && (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Repositories</h2>
+          <span className="text-xs text-muted-foreground">
+            {repos.length} repos
+          </span>
+        </div>
+      )}
       {loading && <RepoGridSkeleton />}
       {!loading && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {visible.map((repo) => (
@@ -134,6 +137,17 @@ export function RepoCards({ repos, loading, initialLimit = 6 }: RepoCardsProps) 
           >
             <ChevronDown className="h-4 w-4" />
             Load More ({repos.length - initialLimit} remaining)
+          </button>
+        </div>
+      )}
+      {!loading && showAll && repos.length > initialLimit && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setShowAll(false)}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronUp className="h-4 w-4" />
+            Show Less
           </button>
         </div>
       )}

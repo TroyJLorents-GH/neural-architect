@@ -63,17 +63,20 @@ function timeAgo(dateStr: string): string {
 interface PipelineListProps {
   pipelines: Pipeline[];
   loading?: boolean;
+  compact?: boolean;
 }
 
-export function PipelineList({ pipelines, loading }: PipelineListProps) {
+export function PipelineList({ pipelines, loading, compact }: PipelineListProps) {
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Pipelines</h2>
-        <span className="text-xs text-muted-foreground">
-          {pipelines.length} runs
-        </span>
-      </div>
+      {!compact && (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Pipelines</h2>
+          <span className="text-xs text-muted-foreground">
+            {pipelines.length} runs
+          </span>
+        </div>
+      )}
       {loading && <PipelineListSkeleton />}
       {!loading && <Card>
         <CardContent className="p-0">

@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
+import MicrosoftEntraId from "next-auth/providers/microsoft-entra-id";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -12,18 +13,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
     }),
+    ...(process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET
+      ? [
+          MicrosoftEntraId({
+            clientId: process.env.AZURE_AD_CLIENT_ID,
+            clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
+            issuer: `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID || "common"}/v2.0`,
+            authorization: {
+              params: {
+                scope:
+                  "openid profile email https://management.azure.com/user_impersonation",
+              },
+            },
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Persist the GitHub access token on initial sign in
       if (account) {
-        token.accessToken = account.access_token;
+        if (account.provider === "github") {
+          token.accessToken = account.access_token;
+          token.provider = "github";
+        } else if (account.provider === "microsoft-entra-id") {
+          token.azureAccessToken = account.access_token;
+          token.provider = "microsoft-entra-id";
+          // Keep GitHub token if already set
+        }
       }
       return token;
     },
     async session({ session, token }) {
-      // Make the access token available to the client via API routes
       session.accessToken = token.accessToken as string;
+      session.azureAccessToken = token.azureAccessToken as string;
+      session.provider = token.provider as string;
       return session;
     },
   },

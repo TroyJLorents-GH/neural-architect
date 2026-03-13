@@ -47,17 +47,20 @@ function timeAgo(dateStr: string | null): string {
 
 interface AgentCardsProps {
   agents: AIAgent[];
+  compact?: boolean;
 }
 
-export function AgentCards({ agents }: AgentCardsProps) {
+export function AgentCards({ agents, compact }: AgentCardsProps) {
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">AI Agents</h2>
-        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          Start Chat <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
+      {!compact && (
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">AI Agents</h2>
+          <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Start Chat <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {agents.map((agent) => {
           const typeInfo = typeConfig[agent.type];

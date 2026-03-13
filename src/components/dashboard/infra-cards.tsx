@@ -40,13 +40,14 @@ interface VercelData {
 interface InfraCardsProps {
   resources: InfraResource[];
   vercelData?: VercelData;
+  compact?: boolean;
 }
 
-export function InfraCards({ resources, vercelData }: InfraCardsProps) {
+export function InfraCards({ resources, vercelData, compact }: InfraCardsProps) {
   if (resources.length === 0 && !vercelData?.connected) {
     return (
       <div>
-        <h2 className="mb-4 text-xl font-semibold">Infrastructure</h2>
+        {!compact && <h2 className="mb-4 text-xl font-semibold">Infrastructure</h2>}
         <div className="rounded-lg border border-dashed border-border p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No infrastructure connected yet. Add Azure, Vercel, or AWS credentials in your environment to see resources here.
@@ -58,14 +59,16 @@ export function InfraCards({ resources, vercelData }: InfraCardsProps) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">Infrastructure</h2>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            {resources.length} resources
-          </span>
+      {!compact && (
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold">Infrastructure</h2>
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              {resources.length} resources
+            </span>
+          </div>
         </div>
-      </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {resources.map((resource) => (
           <Card

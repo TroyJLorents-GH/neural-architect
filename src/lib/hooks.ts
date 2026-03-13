@@ -144,6 +144,54 @@ export interface ProviderStatus {
   vercel: boolean;
 }
 
+export interface AzureDiscovery {
+  connected: boolean;
+  tokenSource: "oauth" | "service-principal" | "none";
+  subscriptions: { subscriptionId: string; displayName: string; state: string }[];
+  resourceSummary?: {
+    total: number;
+    vms: number;
+    appServices: number;
+    databases: number;
+    containers: number;
+    ai: number;
+    storage: number;
+  };
+  aiServices: {
+    id: string;
+    name: string;
+    type: string;
+    endpoint?: string;
+    location: string;
+    subscription: string;
+  }[];
+  foundryEndpoints: { name: string; endpoint: string; location: string }[];
+  error?: string;
+}
+
+export function useAzureDiscovery() {
+  const { data: session } = useSession();
+
+  return useQuery<AzureDiscovery>({
+    queryKey: ["azure-discovery"],
+    queryFn: async () => {
+      const res = await fetch("/api/azure/discover");
+      if (!res.ok) {
+        return {
+          connected: false,
+          tokenSource: "none" as const,
+          subscriptions: [],
+          aiServices: [],
+          foundryEndpoints: [],
+        };
+      }
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useProviderStatus() {
   return useQuery<ProviderStatus>({
     queryKey: ["provider-status"],
