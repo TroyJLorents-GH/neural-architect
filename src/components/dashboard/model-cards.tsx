@@ -12,6 +12,8 @@ const providerColors: Record<string, { icon: string; text: string }> = {
   Azure: { icon: "text-sky-500", text: "text-sky-600" },
   Meta: { icon: "text-indigo-500", text: "text-indigo-600" },
   Mistral: { icon: "text-violet-500", text: "text-violet-600" },
+  Ollama: { icon: "text-gray-500", text: "text-gray-600" },
+  HuggingFace: { icon: "text-yellow-500", text: "text-yellow-600" },
 };
 
 const providerIcons: Record<string, string> = {
@@ -21,17 +23,34 @@ const providerIcons: Record<string, string> = {
   Azure: "☁",
   Meta: "◎",
   Mistral: "✦",
+  Ollama: "🦙",
+  HuggingFace: "🤗",
 };
+
+interface OllamaData {
+  models: AIModel[];
+  running: number;
+  total: number;
+}
 
 interface ModelCardsProps {
   models: AIModel[];
+  ollamaData?: OllamaData;
 }
 
-export function ModelCards({ models }: ModelCardsProps) {
+export function ModelCards({ models, ollamaData }: ModelCardsProps) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Available Models</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold">Available Models</h2>
+          {ollamaData && ollamaData.total > 0 && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {ollamaData.running} local running
+            </span>
+          )}
+        </div>
         <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
           View All <ArrowRight className="h-4 w-4" />
         </button>

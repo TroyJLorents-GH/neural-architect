@@ -1,6 +1,7 @@
 "use client";
 
-import { Star, GitFork, CircleDot, Lock, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Star, GitFork, CircleDot, Lock, ExternalLink, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "./sparkline";
@@ -23,9 +24,18 @@ const languageColors: Record<string, string> = {
 interface RepoCardsProps {
   repos: Repository[];
   loading?: boolean;
+  initialLimit?: number;
 }
 
-export function RepoCards({ repos, loading }: RepoCardsProps) {
+export function RepoCards({ repos, loading, initialLimit = 6 }: RepoCardsProps) {
+  const [showAll, setShowAll] = useState(false);
+
+  // Sort by most recent commit activity (updatedAt)
+  const sorted = [...repos].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+  const visible = showAll ? sorted : sorted.slice(0, initialLimit);
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -36,7 +46,7 @@ export function RepoCards({ repos, loading }: RepoCardsProps) {
       </div>
       {loading && <RepoGridSkeleton />}
       {!loading && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {repos.map((repo) => (
+        {visible.map((repo) => (
           <a
             key={repo.id}
             href={repo.url}
@@ -116,6 +126,17 @@ export function RepoCards({ repos, loading }: RepoCardsProps) {
           </a>
         ))}
       </div>}
+      {!loading && !showAll && repos.length > initialLimit && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setShowAll(true)}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronDown className="h-4 w-4" />
+            Load More ({repos.length - initialLimit} remaining)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -31,15 +31,16 @@ export async function GET() {
     const repos = await reposRes.json();
     const pipelines: Pipeline[] = [];
 
-    // Fetch latest workflow runs for each repo (up to 5 repos to limit API calls)
-    const reposToCheck = repos.slice(0, 5);
+    // Fetch latest workflow run per workflow for each repo (check up to 20 repos)
+    const reposToCheck = repos.slice(0, 20);
 
     await Promise.all(
       reposToCheck.map(
         async (repo: { full_name: string; name: string }) => {
           try {
-            const runsRes = await fetch(
-              `https://api.github.com/repos/${repo.full_name}/actions/runs?per_page=3`,
+            // First get the list of workflows defined in this repo
+            const workflowsRes = await fetch(
+              `https://api.github.com/repos/${repo.full_name}/actions/workflows`,
               {
                 headers: {
                   Authorization: `Bearer ${session.accessToken}`,
@@ -48,42 +49,70 @@ export async function GET() {
               }
             );
 
-            if (!runsRes.ok) return;
+            if (!workflowsRes.ok) return;
 
-            const runsData = await runsRes.json();
+            const workflowsData = await workflowsRes.json();
+            const workflows = workflowsData.workflows || [];
 
-            for (const run of runsData.workflow_runs || []) {
-              let status: Pipeline["status"] = "pending";
-              if (run.status === "completed") {
-                status =
-                  run.conclusion === "success"
-                    ? "success"
-                    : run.conclusion === "cancelled"
-                    ? "cancelled"
-                    : "failure";
-              } else if (run.status === "in_progress") {
-                status = "running";
-              }
+            // For each workflow, get only the most recent run
+            await Promise.all(
+              workflows.map(
+                async (wf: { id: number; name: string; path: string }) => {
+                  try {
+                    const runsRes = await fetch(
+                      `https://api.github.com/repos/${repo.full_name}/actions/workflows/${wf.id}/runs?per_page=1`,
+                      {
+                        headers: {
+                          Authorization: `Bearer ${session.accessToken}`,
+                          Accept: "application/vnd.github+json",
+                        },
+                      }
+                    );
 
-              const startTime = new Date(run.run_started_at || run.created_at);
-              const endTime = run.updated_at
-                ? new Date(run.updated_at)
-                : new Date();
-              const duration = Math.round(
-                (endTime.getTime() - startTime.getTime()) / 1000
-              );
+                    if (!runsRes.ok) return;
 
-              pipelines.push({
-                id: String(run.id),
-                name: run.name || run.workflow_id,
-                repoName: repo.name,
-                status,
-                branch: run.head_branch,
-                duration,
-                triggeredAt: run.created_at,
-                provider: "github",
-              });
-            }
+                    const runsData = await runsRes.json();
+                    const run = runsData.workflow_runs?.[0];
+                    if (!run) return;
+
+                    let status: Pipeline["status"] = "pending";
+                    if (run.status === "completed") {
+                      status =
+                        run.conclusion === "success"
+                          ? "success"
+                          : run.conclusion === "cancelled"
+                          ? "cancelled"
+                          : "failure";
+                    } else if (run.status === "in_progress") {
+                      status = "running";
+                    }
+
+                    const startTime = new Date(
+                      run.run_started_at || run.created_at
+                    );
+                    const endTime = run.updated_at
+                      ? new Date(run.updated_at)
+                      : new Date();
+                    const duration = Math.round(
+                      (endTime.getTime() - startTime.getTime()) / 1000
+                    );
+
+                    pipelines.push({
+                      id: String(run.id),
+                      name: wf.name,
+                      repoName: repo.name,
+                      status,
+                      branch: run.head_branch,
+                      duration,
+                      triggeredAt: run.created_at,
+                      provider: "github",
+                    });
+                  } catch {
+                    // Skip workflows with errors
+                  }
+                }
+              )
+            );
           } catch {
             // Skip repos with no workflows
           }

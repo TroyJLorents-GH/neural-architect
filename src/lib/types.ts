@@ -12,8 +12,8 @@ export interface Repository {
   url: string;
   isPrivate: boolean;
   defaultBranch: string;
-  commitActivity: number[]; // last 7 days of commit counts for sparkline
-  provider: "github" | "gitlab" | "azure-devops";
+  commitActivity: number[];
+  provider: "github" | "gitlab" | "azure-devops" | "bitbucket";
 }
 
 export interface Pipeline {
@@ -22,9 +22,9 @@ export interface Pipeline {
   repoName: string;
   status: "success" | "failure" | "running" | "pending" | "cancelled";
   branch: string;
-  duration: number; // seconds
+  duration: number;
   triggeredAt: string;
-  provider: "github" | "gitlab" | "azure-devops";
+  provider: "github" | "gitlab" | "azure-devops" | "vercel" | "netlify";
 }
 
 export interface AIAgent {
@@ -41,9 +41,20 @@ export interface AIAgent {
 export interface AIModel {
   id: string;
   name: string;
-  provider: "OpenAI" | "Anthropic" | "Google" | "Azure" | "Meta" | "Mistral";
+  provider: "OpenAI" | "Anthropic" | "Google" | "Azure" | "Meta" | "Mistral" | "Ollama" | "HuggingFace";
   capabilities: string[];
   description: string;
+}
+
+export interface InfraResource {
+  id: string;
+  name: string;
+  type: "vm" | "app-service" | "function" | "container" | "database" | "storage" | "ai" | "other";
+  provider: "azure" | "aws" | "gcp" | "vercel" | "netlify";
+  status: "running" | "stopped" | "error" | "deploying" | "unknown";
+  region: string;
+  url?: string;
+  details?: Record<string, string>;
 }
 
 export interface DashboardStats {
@@ -51,10 +62,11 @@ export interface DashboardStats {
   activePipelines: number;
   deployedAgents: number;
   availableModels: number;
+  infraResources?: number;
 }
 
 export interface ConnectedAccount {
-  provider: "github" | "gitlab" | "azure-devops" | "aws";
+  provider: "github" | "gitlab" | "azure-devops" | "aws" | "vercel" | "netlify";
   username: string;
   connected: boolean;
   avatarUrl?: string;

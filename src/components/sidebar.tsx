@@ -7,6 +7,7 @@ import {
   Workflow,
   Bot,
   Brain,
+  Server,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ const navItems = [
   { icon: Workflow, label: "Pipelines", id: "pipelines" },
   { icon: Bot, label: "AI Agents", id: "agents" },
   { icon: Brain, label: "Models", id: "models" },
+  { icon: Server, label: "Infrastructure", id: "infrastructure" },
   { icon: Settings, label: "Settings", id: "settings" },
 ];
 

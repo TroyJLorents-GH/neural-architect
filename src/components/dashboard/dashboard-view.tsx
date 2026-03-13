@@ -12,7 +12,11 @@ import {
   useGitHubRepos,
   useGitHubPipelines,
   useAzureAgents,
-  useAzureModels,
+  useAllModels,
+  useInfrastructure,
+  useOllamaModels,
+  useVercelDeployments,
+  useProviderStatus,
 } from "@/lib/hooks";
 import {
   mockStats,
@@ -22,6 +26,7 @@ import {
   mockModels,
 } from "@/lib/mock-data";
 import type { DashboardStats } from "@/lib/types";
+import { InfraCards } from "./infra-cards";
 
 interface DashboardViewProps {
   activeSection: string;
@@ -34,7 +39,10 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const { data: pipelines, isLoading: pipelinesLoading } =
     useGitHubPipelines();
   const { data: agents } = useAzureAgents();
-  const { data: models } = useAzureModels();
+  const { data: models } = useAllModels();
+  const { data: infra } = useInfrastructure();
+  const { data: ollamaData } = useOllamaModels();
+  const { data: vercelData } = useVercelDeployments();
 
   const isConnected = !!session?.accessToken;
 
@@ -45,6 +53,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const displayAgents = agents || mockAgents;
   const displayModels = models || mockModels;
 
+  const displayInfra = infra || [];
+
   const stats: DashboardStats = isConnected
     ? {
         totalRepos: displayRepos.length,
@@ -53,6 +63,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         ).length,
         deployedAgents: displayAgents.length,
         availableModels: displayModels.length,
+        infraResources: displayInfra.length,
       }
     : mockStats;
 
@@ -115,6 +126,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             {activeSection === "pipelines" && "Pipelines"}
             {activeSection === "agents" && "AI Agents"}
             {activeSection === "models" && "Models"}
+            {activeSection === "infrastructure" && "Infrastructure"}
             {activeSection === "settings" && "Settings"}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -128,6 +140,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
               "Your deployed AI agents and their activity"}
             {activeSection === "models" &&
               "Available AI models across providers"}
+            {activeSection === "infrastructure" &&
+              "Cloud resources, deployments, and local services"}
             {activeSection === "settings" &&
               "Manage connected accounts and preferences"}
           </p>
@@ -143,8 +157,9 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         {activeSection === "dashboard" && (
           <>
             <StatCards stats={stats} />
-            <ModelCards models={displayModels} />
+            <ModelCards models={displayModels} ollamaData={ollamaData} />
             <AgentCards agents={displayAgents} />
+            <InfraCards resources={displayInfra} vercelData={vercelData} />
             <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
             <PipelineList
               pipelines={displayPipelines}
@@ -155,7 +170,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
 
         {/* Individual sections */}
         {activeSection === "repositories" && (
-          <RepoCards repos={displayRepos} loading={reposLoading && isConnected} />
+          <RepoCards repos={displayRepos} loading={reposLoading && isConnected} initialLimit={100} />
         )}
         {activeSection === "pipelines" && (
           <PipelineList
@@ -164,7 +179,10 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
           />
         )}
         {activeSection === "agents" && <AgentCards agents={displayAgents} />}
-        {activeSection === "models" && <ModelCards models={displayModels} />}
+        {activeSection === "models" && <ModelCards models={displayModels} ollamaData={ollamaData} />}
+        {activeSection === "infrastructure" && (
+          <InfraCards resources={displayInfra} vercelData={vercelData} />
+        )}
         {activeSection === "settings" && (
           <SettingsView
             isConnected={isConnected}
@@ -184,6 +202,8 @@ function SettingsView({
   username?: string | null;
 }) {
   const { theme, setTheme } = useTheme();
+  const { data: providerStatus } = useProviderStatus();
+
   const providers = [
     {
       name: "GitHub",
@@ -191,8 +211,81 @@ function SettingsView({
       username: username || null,
       icon: "⬡",
       available: true,
+      category: "source",
       onConnect: () => signIn("github"),
       onDisconnect: () => signOut(),
+    },
+    {
+      name: "Azure",
+      connected: !!providerStatus?.azure,
+      username: providerStatus?.azureFoundry ? "Foundry + Models" : null,
+      icon: "☁",
+      available: true,
+      category: "cloud",
+      description: "Foundry agents, models, and infrastructure",
+      envHint: "Set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET in .env.local",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
+    {
+      name: "OpenAI",
+      connected: !!providerStatus?.openai,
+      username: null,
+      icon: "⚡",
+      available: true,
+      category: "ai",
+      description: "List models and usage stats",
+      envHint: "Set OPENAI_API_KEY in .env.local",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
+    {
+      name: "Anthropic",
+      connected: !!providerStatus?.anthropic,
+      username: null,
+      icon: "🔶",
+      available: true,
+      category: "ai",
+      description: "Claude models and capabilities",
+      envHint: "Set ANTHROPIC_API_KEY in .env.local",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
+    {
+      name: "Ollama",
+      connected: !!providerStatus?.ollama,
+      username: null,
+      icon: "🦙",
+      available: true,
+      category: "ai",
+      description: "Local models running on your machine",
+      envHint: "Auto-detected at localhost:11434",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
+    {
+      name: "HuggingFace",
+      connected: !!providerStatus?.huggingface,
+      username: null,
+      icon: "🤗",
+      available: true,
+      category: "ai",
+      description: "Your models and spaces",
+      envHint: "Set HUGGINGFACE_TOKEN in .env.local",
+      onConnect: () => {},
+      onDisconnect: () => {},
+    },
+    {
+      name: "Vercel",
+      connected: !!providerStatus?.vercel,
+      username: null,
+      icon: "▲",
+      available: true,
+      category: "deploy",
+      description: "Projects and deployment status",
+      envHint: "Set VERCEL_TOKEN in .env.local",
+      onConnect: () => {},
+      onDisconnect: () => {},
     },
     {
       name: "GitLab",
@@ -200,15 +293,7 @@ function SettingsView({
       username: null,
       icon: "◆",
       available: false,
-      onConnect: () => {},
-      onDisconnect: () => {},
-    },
-    {
-      name: "Azure DevOps",
-      connected: false,
-      username: null,
-      icon: "☁",
-      available: false,
+      category: "source",
       onConnect: () => {},
       onDisconnect: () => {},
     },
@@ -218,6 +303,7 @@ function SettingsView({
       username: null,
       icon: "◈",
       available: false,
+      category: "cloud",
       onConnect: () => {},
       onDisconnect: () => {},
     },
@@ -251,6 +337,16 @@ function SettingsView({
                   {p.connected && p.username && (
                     <p className="text-xs text-muted-foreground">
                       {p.username}
+                    </p>
+                  )}
+                  {"description" in p && p.description && !p.connected && (
+                    <p className="text-xs text-muted-foreground">
+                      {p.description}
+                    </p>
+                  )}
+                  {"envHint" in p && p.envHint && !p.connected && (
+                    <p className="text-xs text-muted-foreground/60 font-mono">
+                      {p.envHint}
                     </p>
                   )}
                 </div>
