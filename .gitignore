@@ -2,6 +2,7 @@
 
 # secrets
 k8s/secrets.yml
+waitlist.json
 *.tfvars
 .terraform/
 *.tfstate
