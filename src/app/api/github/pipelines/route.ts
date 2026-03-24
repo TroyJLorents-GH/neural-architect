@@ -10,29 +10,39 @@ export async function GET() {
   }
 
   try {
-    // First get the user's repos that have workflows
-    const reposRes = await fetch(
-      "https://api.github.com/user/repos?sort=updated&per_page=10",
-      {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-          Accept: "application/vnd.github+json",
-        },
-      }
-    );
-
-    if (!reposRes.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch repos" },
-        { status: reposRes.status }
+    // Fetch all repos (paginate to get up to 100)
+    const allRepos: { full_name: string; name: string }[] = [];
+    let page = 1;
+    while (page <= 3) {
+      const reposRes = await fetch(
+        `https://api.github.com/user/repos?sort=updated&per_page=100&page=${page}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+            Accept: "application/vnd.github+json",
+          },
+        }
       );
+
+      if (!reposRes.ok) {
+        if (page === 1) {
+          return NextResponse.json(
+            { error: "Failed to fetch repos" },
+            { status: reposRes.status }
+          );
+        }
+        break;
+      }
+
+      const repos = await reposRes.json();
+      if (repos.length === 0) break;
+      allRepos.push(...repos);
+      if (repos.length < 100) break;
+      page++;
     }
 
-    const repos = await reposRes.json();
     const pipelines: Pipeline[] = [];
-
-    // Fetch latest workflow run per workflow for each repo (check up to 20 repos)
-    const reposToCheck = repos.slice(0, 20);
+    const reposToCheck = allRepos;
 
     await Promise.all(
       reposToCheck.map(

@@ -7,7 +7,6 @@ import {
   Workflow,
   MessageSquare,
   Wrench,
-  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,11 +53,8 @@ export function AgentCards({ agents, compact }: AgentCardsProps) {
   return (
     <div>
       {!compact && (
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h2 className="text-xl font-semibold">AI Agents</h2>
-          <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Start Chat <ArrowRight className="h-4 w-4" />
-          </button>
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

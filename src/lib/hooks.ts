@@ -134,7 +134,8 @@ export function useVercelDeployments() {
 
 export interface ProviderStatus {
   github: boolean;
-  azure: boolean;
+  azureServicePrincipal: boolean;
+  azureOAuthAvailable: boolean;
   azureFoundry: boolean;
   azureInfra: boolean;
   openai: boolean;

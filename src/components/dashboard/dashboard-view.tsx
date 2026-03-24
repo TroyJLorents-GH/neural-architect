@@ -26,6 +26,7 @@ import { AgentCards } from "./agent-cards";
 import { ModelCards } from "./model-cards";
 import { InfraCards } from "./infra-cards";
 import { DashboardSection } from "./dashboard-section";
+import { AzureView } from "./azure-view";
 import {
   useGitHubRepos,
   useGitHubPipelines,
@@ -83,10 +84,12 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const { data: vercelData } = useVercelDeployments();
 
   const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_ORDER);
+  const [mounted, setMounted] = useState(false);
 
-  // Load saved order on mount
+  // Load saved order on mount and mark as client-rendered
   useEffect(() => {
     setSectionOrder(loadSectionOrder());
+    setMounted(true);
   }, []);
 
   const sensors = useSensors(
@@ -229,6 +232,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             {activeSection === "pipelines" && "Pipelines"}
             {activeSection === "agents" && "AI Agents"}
             {activeSection === "models" && "Models"}
+            {activeSection === "azure" && "Azure"}
             {activeSection === "infrastructure" && "Infrastructure"}
             {activeSection === "settings" && "Settings"}
           </h1>
@@ -243,6 +247,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
               "Your deployed AI agents and their activity"}
             {activeSection === "models" &&
               "Available AI models across providers"}
+            {activeSection === "azure" &&
+              "Subscriptions, resources, AI services, and Foundry agents"}
             {activeSection === "infrastructure" &&
               "Cloud resources, deployments, and local services"}
             {activeSection === "settings" &&
@@ -256,26 +262,34 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
           )}
         </div>
 
-        {/* Dashboard overview — draggable sections */}
+        {/* Dashboard overview — draggable sections (only render DndContext after mount to avoid hydration mismatch) */}
         {activeSection === "dashboard" && (
           <>
             <StatCards stats={stats} />
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sectionOrder}
-                strategy={verticalListSortingStrategy}
+            {mounted ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-6 md:space-y-8">
-                  {sectionOrder.map((id) => (
-                    <div key={id}>{sectionContent[id]}</div>
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+                <SortableContext
+                  items={sectionOrder}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-6 md:space-y-8">
+                    {sectionOrder.map((id) => (
+                      <div key={id}>{sectionContent[id]}</div>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="space-y-6 md:space-y-8">
+                {sectionOrder.map((id) => (
+                  <div key={id}>{sectionContent[id]}</div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -291,6 +305,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         )}
         {activeSection === "agents" && <AgentCards agents={displayAgents} />}
         {activeSection === "models" && <ModelCards models={displayModels} ollamaData={ollamaData} />}
+        {activeSection === "azure" && <AzureView />}
         {activeSection === "infrastructure" && (
           <InfraCards resources={displayInfra} vercelData={vercelData} />
         )}
@@ -298,6 +313,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
           <SettingsView
             isConnected={isConnected}
             username={session?.user?.name}
+            session={session as { azureAccessToken?: string; provider?: string } | null}
           />
         )}
       </div>
@@ -308,184 +324,206 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
 function SettingsView({
   isConnected,
   username,
+  session,
 }: {
   isConnected: boolean;
   username?: string | null;
+  session: { azureAccessToken?: string; provider?: string } | null;
 }) {
   const { theme, setTheme } = useTheme();
   const { data: providerStatus } = useProviderStatus();
   const { data: azureDiscovery } = useAzureDiscovery();
 
-  const azureConnected = azureDiscovery?.connected || !!providerStatus?.azure;
-  const azureDetail = azureDiscovery?.connected
-    ? `${azureDiscovery.subscriptions.length} subscription${azureDiscovery.subscriptions.length !== 1 ? "s" : ""} · ${azureDiscovery.aiServices.length} AI services`
-    : providerStatus?.azureFoundry
-    ? "Foundry + Models (Service Principal)"
-    : null;
+  const azureOAuthConnected = !!session?.azureAccessToken;
+  const azureSpConnected = !!providerStatus?.azureServicePrincipal;
+  const azureOAuthAvailable = !!providerStatus?.azureOAuthAvailable;
 
   const providers = [
     {
       name: "GitHub",
       connected: isConnected,
-      username: username || null,
+      detail: username || null,
       icon: "⬡",
-      available: true,
+      status: isConnected ? "oauth" as const : "disconnected" as const,
       category: "source",
-      onConnect: () => signIn("github"),
-      onDisconnect: () => signOut(),
+      description: "Repositories, pipelines, and activity",
+      action: isConnected
+        ? { label: "Sign Out", onClick: () => signOut(), variant: "destructive" as const }
+        : { label: "Sign In", onClick: () => signIn("github"), variant: "primary" as const },
     },
     {
       name: "Azure",
-      connected: azureConnected,
-      username: azureDetail,
+      connected: azureOAuthConnected || azureSpConnected,
+      detail: azureOAuthConnected
+        ? "Microsoft OAuth (auto-discovery)"
+        : azureSpConnected
+        ? "Service Principal (env vars)"
+        : null,
       icon: "☁",
-      available: true,
+      status: azureOAuthConnected ? "oauth" as const : azureSpConnected ? "env" as const : "disconnected" as const,
       category: "cloud",
-      description: "Sign in with Microsoft to auto-discover subscriptions, AI services, and Foundry endpoints",
-      envHint: azureConnected ? undefined : "Or set AZURE_TENANT_ID + AZURE_CLIENT_ID + AZURE_CLIENT_SECRET in .env.local",
-      onConnect: () => signIn("microsoft-entra-id"),
-      onDisconnect: () => {},
+      description: azureOAuthAvailable
+        ? "Sign in with Microsoft to auto-discover your subscriptions, resources, and AI services"
+        : "Configure AZURE_AD_CLIENT_ID + SECRET in .env.local to enable OAuth, or use Service Principal env vars",
+      action: azureOAuthConnected
+        ? { label: "Connected via OAuth", onClick: () => {}, variant: "disabled" as const }
+        : azureOAuthAvailable
+        ? { label: "Sign in with Microsoft", onClick: () => signIn("microsoft-entra-id"), variant: "primary" as const }
+        : azureSpConnected
+        ? { label: "Configured via env", onClick: () => {}, variant: "disabled" as const }
+        : null,
     },
     {
       name: "OpenAI",
       connected: !!providerStatus?.openai,
-      username: null,
+      detail: null,
       icon: "⚡",
-      available: true,
+      status: providerStatus?.openai ? "env" as const : "disconnected" as const,
       category: "ai",
-      description: "List models and usage stats",
-      envHint: "Set OPENAI_API_KEY in .env.local",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: providerStatus?.openai ? "Models and usage stats" : "Set OPENAI_API_KEY in .env.local",
+      action: null,
     },
     {
       name: "Anthropic",
       connected: !!providerStatus?.anthropic,
-      username: null,
+      detail: null,
       icon: "🔶",
-      available: true,
+      status: providerStatus?.anthropic ? "env" as const : "disconnected" as const,
       category: "ai",
-      description: "Claude models and capabilities",
-      envHint: "Set ANTHROPIC_API_KEY in .env.local",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: providerStatus?.anthropic ? "Claude models" : "Set ANTHROPIC_API_KEY in .env.local",
+      action: null,
     },
     {
       name: "Ollama",
       connected: !!providerStatus?.ollama,
-      username: null,
+      detail: null,
       icon: "🦙",
-      available: true,
+      status: "env" as const,
       category: "ai",
-      description: "Local models running on your machine",
-      envHint: "Auto-detected at localhost:11434",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: "Auto-detected at localhost:11434",
+      action: null,
     },
     {
       name: "HuggingFace",
       connected: !!providerStatus?.huggingface,
-      username: null,
+      detail: null,
       icon: "🤗",
-      available: true,
+      status: providerStatus?.huggingface ? "env" as const : "disconnected" as const,
       category: "ai",
-      description: "Your models and spaces",
-      envHint: "Set HUGGINGFACE_TOKEN in .env.local",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: providerStatus?.huggingface ? "Models and spaces" : "Set HUGGINGFACE_TOKEN in .env.local",
+      action: null,
     },
     {
       name: "Vercel",
       connected: !!providerStatus?.vercel,
-      username: null,
+      detail: null,
       icon: "▲",
-      available: true,
+      status: providerStatus?.vercel ? "env" as const : "disconnected" as const,
       category: "deploy",
-      description: "Projects and deployment status",
-      envHint: "Set VERCEL_TOKEN in .env.local",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: providerStatus?.vercel ? "Projects and deployments" : "Set VERCEL_TOKEN in .env.local",
+      action: null,
     },
     {
       name: "GitLab",
       connected: false,
-      username: null,
+      detail: null,
       icon: "◆",
-      available: false,
+      status: "coming-soon" as const,
       category: "source",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: "Coming soon",
+      action: null,
     },
     {
       name: "AWS",
       connected: false,
-      username: null,
+      detail: null,
       icon: "◈",
-      available: false,
+      status: "coming-soon" as const,
       category: "cloud",
-      onConnect: () => {},
-      onDisconnect: () => {},
+      description: "Coming soon",
+      action: null,
     },
   ];
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "oauth":
+        return (
+          <span className="flex items-center gap-1 text-xs text-emerald-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            OAuth
+          </span>
+        );
+      case "env":
+        return (
+          <span className="flex items-center gap-1 text-xs text-blue-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            API Key
+          </span>
+        );
+      case "coming-soon":
+        return (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+            Coming Soon
+          </span>
+        );
+      default:
+        return (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+            Not connected
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="mb-1 text-lg font-semibold">Connected Accounts</h3>
+        <h3 className="mb-1 text-lg font-semibold">Connected Providers</h3>
         <p className="mb-4 text-sm text-muted-foreground">
-          Connect your accounts to pull in repos, pipelines, and infrastructure data
+          Manage OAuth connections and API key integrations
         </p>
         <div className="space-y-3">
           {providers.map((p) => (
             <div
               key={p.name}
-              className="flex items-center justify-between rounded-lg border border-border p-4"
+              className={`flex items-center justify-between rounded-lg border p-4 ${
+                p.connected ? "border-border" : "border-border/50"
+              }`}
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">{p.icon}</span>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{p.name}</p>
-                    {p.connected && (
-                      <span className="flex items-center gap-1 text-xs text-emerald-500">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Connected
-                      </span>
-                    )}
+                    {statusBadge(p.status)}
                   </div>
-                  {p.connected && p.username && (
-                    <p className="text-xs text-muted-foreground">
-                      {p.username}
-                    </p>
+                  {p.detail && (
+                    <p className="text-xs text-muted-foreground">{p.detail}</p>
                   )}
-                  {"description" in p && p.description && !p.connected && (
-                    <p className="text-xs text-muted-foreground">
-                      {p.description}
-                    </p>
-                  )}
-                  {"envHint" in p && p.envHint && !p.connected && (
-                    <p className="text-xs text-muted-foreground/60 font-mono">
-                      {p.envHint}
-                    </p>
-                  )}
+                  <p className={`text-xs ${p.connected ? "text-muted-foreground" : "text-muted-foreground/60 font-mono"}`}>
+                    {p.description}
+                  </p>
                 </div>
               </div>
-              {p.available ? (
+              {p.action && p.action.variant !== "disabled" ? (
                 <button
-                  onClick={p.connected ? p.onDisconnect : p.onConnect}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    p.connected
+                  onClick={p.action.onClick}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                    p.action.variant === "destructive"
                       ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
                       : "bg-primary text-primary-foreground hover:bg-primary/90"
                   }`}
                 >
-                  {p.connected ? "Disconnect" : "Connect"}
+                  {p.action.label}
                 </button>
-              ) : (
-                <span className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground">
-                  Coming soon
+              ) : p.action?.variant === "disabled" ? (
+                <span className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                  {p.action.label}
                 </span>
-              )}
+              ) : null}
             </div>
           ))}
         </div>
@@ -499,23 +537,23 @@ function SettingsView({
             Auto-discovered from your {azureDiscovery.tokenSource === "oauth" ? "Microsoft account" : "Service Principal"}
           </p>
           <div className="space-y-3">
-            {/* Subscriptions */}
-            <div className="rounded-lg border border-border p-4">
-              <p className="text-sm font-medium mb-2">Subscriptions</p>
-              <div className="space-y-2">
-                {azureDiscovery.subscriptions.map((sub) => (
-                  <div key={sub.subscriptionId} className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{sub.displayName}</span>
-                    <span className={`flex items-center gap-1.5 text-xs ${sub.state === "Enabled" ? "text-emerald-500" : "text-muted-foreground"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${sub.state === "Enabled" ? "bg-emerald-500" : "bg-gray-400"}`} />
-                      {sub.state}
-                    </span>
-                  </div>
-                ))}
+            {azureDiscovery.subscriptions.length > 0 && (
+              <div className="rounded-lg border border-border p-4">
+                <p className="text-sm font-medium mb-2">Subscriptions</p>
+                <div className="space-y-2">
+                  {azureDiscovery.subscriptions.map((sub) => (
+                    <div key={sub.subscriptionId} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{sub.displayName}</span>
+                      <span className={`flex items-center gap-1.5 text-xs ${sub.state === "Enabled" ? "text-emerald-500" : "text-muted-foreground"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${sub.state === "Enabled" ? "bg-emerald-500" : "bg-gray-400"}`} />
+                        {sub.state}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* AI Services / Foundry Endpoints */}
             {azureDiscovery.aiServices.length > 0 && (
               <div className="rounded-lg border border-border p-4">
                 <p className="text-sm font-medium mb-2">AI Services & Foundry Endpoints</p>
@@ -537,7 +575,6 @@ function SettingsView({
               </div>
             )}
 
-            {/* Resource Summary */}
             {azureDiscovery.resourceSummary && (
               <div className="rounded-lg border border-border p-4">
                 <p className="text-sm font-medium mb-2">Resource Summary</p>

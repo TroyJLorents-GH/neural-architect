@@ -312,9 +312,9 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {[
-                  { name: "neural-architect", lang: "TypeScript", color: "#3178c6" },
-                  { name: "resume-match-ai", lang: "Python", color: "#3572a5" },
-                  { name: "MyStudentApi", lang: "C#", color: "#178600" },
+                  { name: "web-platform", lang: "TypeScript", color: "#3178c6" },
+                  { name: "data-pipeline", lang: "Python", color: "#3572a5" },
+                  { name: "auth-service", lang: "Go", color: "#00add8" },
                 ].map((r) => (
                   <div
                     key={r.name}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, GitFork, CircleDot, Lock, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, GitFork, CircleDot, Lock, ExternalLink, ChevronDown, ChevronUp, ArrowDownAZ, ArrowUpZA, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "./sparkline";
@@ -30,21 +30,34 @@ interface RepoCardsProps {
 
 export function RepoCards({ repos, loading, initialLimit = 6, compact }: RepoCardsProps) {
   const [showAll, setShowAll] = useState(false);
+  const [sort, setSort] = useState<"recent" | "az" | "za">("recent");
 
-  // Sort by most recent commit activity (updatedAt)
-  const sorted = [...repos].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+  const sorted = [...repos].sort((a, b) => {
+    if (sort === "az") return a.name.localeCompare(b.name);
+    if (sort === "za") return b.name.localeCompare(a.name);
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+
+  const hasMore = sorted.length > initialLimit;
   const visible = showAll ? sorted : sorted.slice(0, initialLimit);
+  const remaining = sorted.length - initialLimit;
 
   return (
     <div>
       {!compact && (
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Repositories</h2>
-          <span className="text-xs text-muted-foreground">
-            {repos.length} repos
-          </span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold">Repositories</h2>
+            <span className="text-xs text-muted-foreground">
+              {repos.length} repos
+            </span>
+          </div>
+          <SortToggle sort={sort} onSort={setSort} />
+        </div>
+      )}
+      {compact && hasMore && (
+        <div className="mb-3 flex justify-end">
+          <SortToggle sort={sort} onSort={setSort} />
         </div>
       )}
       {loading && <RepoGridSkeleton />}
@@ -129,28 +142,61 @@ export function RepoCards({ repos, loading, initialLimit = 6, compact }: RepoCar
           </a>
         ))}
       </div>}
-      {!loading && !showAll && repos.length > initialLimit && (
+      {!loading && hasMore && (
         <div className="mt-4 flex justify-center">
           <button
-            onClick={() => setShowAll(true)}
+            onClick={() => setShowAll(!showAll)}
             className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
-            <ChevronDown className="h-4 w-4" />
-            Load More ({repos.length - initialLimit} remaining)
-          </button>
-        </div>
-      )}
-      {!loading && showAll && repos.length > initialLimit && (
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={() => setShowAll(false)}
-            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <ChevronUp className="h-4 w-4" />
-            Show Less
+            {showAll ? (
+              <>
+                Show Less <ChevronUp className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Load More ({remaining} remaining) <ChevronDown className="h-4 w-4" />
+              </>
+            )}
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+function SortToggle({
+  sort,
+  onSort,
+}: {
+  sort: "recent" | "az" | "za";
+  onSort: (s: "recent" | "az" | "za") => void;
+}) {
+  const cycle = () => {
+    if (sort === "recent") onSort("az");
+    else if (sort === "az") onSort("za");
+    else onSort("recent");
+  };
+
+  return (
+    <button
+      onClick={cycle}
+      className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        sort !== "recent"
+          ? "border-primary/30 bg-primary/5 text-primary"
+          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+      title={sort === "recent" ? "Sort A-Z" : sort === "az" ? "Sort Z-A" : "Sort by recent"}
+    >
+      {sort === "recent" ? (
+        <Clock className="h-3.5 w-3.5" />
+      ) : sort === "za" ? (
+        <ArrowUpZA className="h-3.5 w-3.5" />
+      ) : (
+        <ArrowDownAZ className="h-3.5 w-3.5" />
+      )}
+      {sort === "recent" && <span>Recent</span>}
+      {sort === "az" && <span>A-Z</span>}
+      {sort === "za" && <span>Z-A</span>}
+    </button>
   );
 }

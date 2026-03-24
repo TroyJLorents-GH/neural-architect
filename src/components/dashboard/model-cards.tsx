@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, ArrowDownAZ, ArrowUpZA, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { AIModel } from "@/lib/types";
@@ -37,9 +38,24 @@ interface ModelCardsProps {
   models: AIModel[];
   ollamaData?: OllamaData;
   compact?: boolean;
+  /** Number of items to show before "Load More" (default 8 = 2 rows of 4) */
+  initialLimit?: number;
 }
 
-export function ModelCards({ models, ollamaData, compact }: ModelCardsProps) {
+export function ModelCards({ models, ollamaData, compact, initialLimit = 8 }: ModelCardsProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [sort, setSort] = useState<"default" | "az" | "za">("default");
+
+  const sorted = [...models].sort((a, b) => {
+    if (sort === "az") return a.name.localeCompare(b.name);
+    if (sort === "za") return b.name.localeCompare(a.name);
+    return 0;
+  });
+
+  const hasMore = sorted.length > initialLimit;
+  const visible = expanded ? sorted : sorted.slice(0, initialLimit);
+  const remaining = sorted.length - initialLimit;
+
   return (
     <div>
       {!compact && (
@@ -53,13 +69,21 @@ export function ModelCards({ models, ollamaData, compact }: ModelCardsProps) {
               </span>
             )}
           </div>
-          <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            View All <ArrowRight className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <SortToggle sort={sort} onSort={setSort} />
+            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              View All <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      {compact && hasMore && (
+        <div className="mb-3 flex justify-end">
+          <SortToggle sort={sort} onSort={setSort} />
         </div>
       )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {models.map((model) => {
+        {visible.map((model) => {
           const colors = providerColors[model.provider] || {
             icon: "text-gray-500",
             text: "text-gray-600",
@@ -104,6 +128,57 @@ export function ModelCards({ models, ollamaData, compact }: ModelCardsProps) {
           );
         })}
       </div>
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            {expanded ? (
+              <>
+                Show Less <ChevronUp className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Load More ({remaining} remaining) <ChevronDown className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SortToggle({
+  sort,
+  onSort,
+}: {
+  sort: "default" | "az" | "za";
+  onSort: (s: "default" | "az" | "za") => void;
+}) {
+  const cycle = () => {
+    if (sort === "default") onSort("az");
+    else if (sort === "az") onSort("za");
+    else onSort("default");
+  };
+
+  return (
+    <button
+      onClick={cycle}
+      className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+        sort !== "default"
+          ? "border-primary/30 bg-primary/5 text-primary"
+          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+      title={sort === "default" ? "Sort A-Z" : sort === "az" ? "Sort Z-A" : "Default order"}
+    >
+      {sort === "za" ? (
+        <ArrowUpZA className="h-3.5 w-3.5" />
+      ) : (
+        <ArrowDownAZ className="h-3.5 w-3.5" />
+      )}
+      {sort !== "default" && <span>{sort === "az" ? "A-Z" : "Z-A"}</span>}
+    </button>
   );
 }

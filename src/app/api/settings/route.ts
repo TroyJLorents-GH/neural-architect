@@ -3,10 +3,16 @@ import { NextResponse } from "next/server";
 export async function GET() {
   return NextResponse.json({
     github: !!process.env.GITHUB_CLIENT_ID,
-    azure: !!(
+    // Service Principal (backend) — separate from user OAuth
+    azureServicePrincipal: !!(
       process.env.AZURE_TENANT_ID &&
       process.env.AZURE_CLIENT_ID &&
       process.env.AZURE_CLIENT_SECRET
+    ),
+    // Microsoft Entra ID OAuth available for user sign-in
+    azureOAuthAvailable: !!(
+      process.env.AZURE_AD_CLIENT_ID &&
+      process.env.AZURE_AD_CLIENT_SECRET
     ),
     azureFoundry: !!(process.env.AZURE_FOUNDRY_ENDPOINTS),
     azureInfra: !!(process.env.AZURE_SUBSCRIPTION_ID),
