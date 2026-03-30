@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import type { Repository, Pipeline, AIAgent, AIModel, InfraResource } from "./types";
+import type { GcpDiscovery } from "./gcp-types";
 import type { UserProfile } from "./cosmos";
 import { mockRepos, mockPipelines, mockAgents, mockModels } from "./mock-data";
 
@@ -143,6 +144,50 @@ export interface ProviderStatus {
   ollama: boolean;
   huggingface: boolean;
   vercel: boolean;
+  aws: boolean;
+  gitlab: boolean;
+  gcpOAuthAvailable: boolean;
+}
+
+export interface AwsResource {
+  id: string;
+  name: string;
+  type: string;
+  icon: string;
+  service: string;
+  region: string;
+  status: string;
+  details: Record<string, string>;
+  consoleUrl: string;
+}
+
+export interface AwsDiscovery {
+  connected: boolean;
+  region: string;
+  resources: AwsResource[];
+  summary: {
+    total: number;
+    functions: number;
+    vms: number;
+    storage: number;
+    databases: number;
+  };
+  errors?: string[];
+}
+
+export function useAwsDiscovery() {
+  const { data: session } = useSession();
+
+  return useQuery<AwsDiscovery>({
+    queryKey: ["aws-discovery"],
+    queryFn: async () => {
+      const res = await fetch("/api/aws");
+      if (!res.ok) return { connected: false, region: "", resources: [], summary: { total: 0, functions: 0, vms: 0, storage: 0, databases: 0 } };
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export interface AzureDiscovery {
@@ -193,6 +238,56 @@ export function useAzureDiscovery() {
   });
 }
 
+export interface AzureResourceGroup {
+  id: string;
+  name: string;
+  location: string;
+  provisioningState: string;
+  tags: Record<string, string>;
+}
+
+export interface AzureResourceDetail {
+  id: string;
+  name: string;
+  azureType: string;
+  type: string;
+  icon: string;
+  kind: string | null;
+  location: string;
+  sku: string | null;
+  tags: Record<string, string>;
+}
+
+export function useAzureResourceGroups() {
+  const { data: session } = useSession();
+
+  return useQuery<{ resourceGroups: AzureResourceGroup[]; tokenSource?: string }>({
+    queryKey: ["azure-resource-groups"],
+    queryFn: async () => {
+      const res = await fetch("/api/azure/resource-groups");
+      if (!res.ok) return { resourceGroups: [] };
+      return res.json();
+    },
+    enabled: !!session?.user,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAzureResourceGroupResources(rgName: string | null) {
+  const { data: session } = useSession();
+
+  return useQuery<{ resources: AzureResourceDetail[] }>({
+    queryKey: ["azure-rg-resources", rgName],
+    queryFn: async () => {
+      const res = await fetch(`/api/azure/resource-groups/${encodeURIComponent(rgName!)}/resources`);
+      if (!res.ok) return { resources: [] };
+      return res.json();
+    },
+    enabled: !!session?.user && !!rgName,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useProviderStatus() {
   return useQuery<ProviderStatus>({
     queryKey: ["provider-status"],
@@ -236,5 +331,54 @@ export function useUpdateProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
     },
+  });
+}
+
+// ── GitLab ──
+
+export function useGitLabRepos() {
+  const { data: session } = useSession();
+
+  return useQuery<Repository[]>({
+    queryKey: ["gitlab-repos"],
+    queryFn: async () => {
+      const res = await fetch("/api/gitlab/repos");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!(session as unknown as { gitlabAccessToken?: string })?.gitlabAccessToken,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useGitLabPipelines() {
+  const { data: session } = useSession();
+
+  return useQuery<Pipeline[]>({
+    queryKey: ["gitlab-pipelines"],
+    queryFn: async () => {
+      const res = await fetch("/api/gitlab/pipelines");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!(session as unknown as { gitlabAccessToken?: string })?.gitlabAccessToken,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+// ── GCP ──
+
+export function useGcpDiscovery() {
+  const { data: session } = useSession();
+
+  return useQuery<GcpDiscovery>({
+    queryKey: ["gcp-discovery"],
+    queryFn: async () => {
+      const res = await fetch("/api/gcp");
+      if (!res.ok) return { connected: false, projects: [], resources: [], summary: { total: 0, vms: 0, functions: 0, containers: 0, databases: 0, storage: 0 } };
+      return res.json();
+    },
+    enabled: !!(session as unknown as { gcpAccessToken?: string })?.gcpAccessToken,
+    staleTime: 5 * 60 * 1000,
   });
 }

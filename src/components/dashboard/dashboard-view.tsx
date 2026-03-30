@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { LogIn, LogOut, User, Sun, Moon } from "lucide-react";
+import { SiGithub, SiGitlab, SiOpenai, SiAnthropic, SiOllama, SiHuggingface, SiVercel, SiGooglecloud } from "react-icons/si";
+import { FaAws, FaMicrosoft } from "react-icons/fa6";
 import {
   DndContext,
   closestCenter,
@@ -27,6 +29,8 @@ import { ModelCards } from "./model-cards";
 import { InfraCards } from "./infra-cards";
 import { DashboardSection } from "./dashboard-section";
 import { AzureView } from "./azure-view";
+import { AwsView } from "./aws-view";
+import { GcpView } from "./gcp-view";
 import {
   useGitHubRepos,
   useGitHubPipelines,
@@ -37,6 +41,8 @@ import {
   useVercelDeployments,
   useProviderStatus,
   useAzureDiscovery,
+  useGitLabRepos,
+  useGitLabPipelines,
 } from "@/lib/hooks";
 import {
   mockStats,
@@ -77,6 +83,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
   const { data: repos, isLoading: reposLoading } = useGitHubRepos();
   const { data: pipelines, isLoading: pipelinesLoading } =
     useGitHubPipelines();
+  const { data: gitlabRepos } = useGitLabRepos();
+  const { data: gitlabPipelines } = useGitLabPipelines();
   const { data: agents } = useAzureAgents();
   const { data: models } = useAllModels();
   const { data: infra } = useInfrastructure();
@@ -112,10 +120,11 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
 
   const isConnected = !!session?.accessToken;
 
-  // Use real data if connected, mock data as fallback
-  const displayRepos = isConnected && repos ? repos : mockRepos;
-  const displayPipelines =
-    isConnected && pipelines ? pipelines : mockPipelines;
+  // Use real data if connected, mock data as fallback — merge GitLab if available
+  const ghRepos = isConnected && repos ? repos : mockRepos;
+  const displayRepos = gitlabRepos && gitlabRepos.length > 0 ? [...ghRepos, ...gitlabRepos] : ghRepos;
+  const ghPipelines = isConnected && pipelines ? pipelines : mockPipelines;
+  const displayPipelines = gitlabPipelines && gitlabPipelines.length > 0 ? [...ghPipelines, ...gitlabPipelines] : ghPipelines;
   const displayAgents = agents || mockAgents;
   const displayModels = models || mockModels;
 
@@ -233,6 +242,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             {activeSection === "agents" && "AI Agents"}
             {activeSection === "models" && "Models"}
             {activeSection === "azure" && "Azure"}
+            {activeSection === "aws" && "AWS"}
+            {activeSection === "gcp" && "Google Cloud"}
             {activeSection === "infrastructure" && "Infrastructure"}
             {activeSection === "settings" && "Settings"}
           </h1>
@@ -249,6 +260,10 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
               "Available AI models across providers"}
             {activeSection === "azure" &&
               "Subscriptions, resources, AI services, and Foundry agents"}
+            {activeSection === "aws" &&
+              "Lambda functions, EC2 instances, S3 buckets, and databases"}
+            {activeSection === "gcp" &&
+              "Projects, VMs, Cloud Functions, Cloud Run, Cloud SQL, and Storage"}
             {activeSection === "infrastructure" &&
               "Cloud resources, deployments, and local services"}
             {activeSection === "settings" &&
@@ -306,6 +321,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         {activeSection === "agents" && <AgentCards agents={displayAgents} />}
         {activeSection === "models" && <ModelCards models={displayModels} ollamaData={ollamaData} />}
         {activeSection === "azure" && <AzureView />}
+        {activeSection === "aws" && <AwsView />}
+        {activeSection === "gcp" && <GcpView />}
         {activeSection === "infrastructure" && (
           <InfraCards resources={displayInfra} vercelData={vercelData} />
         )}
@@ -343,7 +360,7 @@ function SettingsView({
       name: "GitHub",
       connected: isConnected,
       detail: username || null,
-      icon: "⬡",
+      icon: <SiGithub className="h-5 w-5" />,
       status: isConnected ? "oauth" as const : "disconnected" as const,
       category: "source",
       description: "Repositories, pipelines, and activity",
@@ -359,16 +376,14 @@ function SettingsView({
         : azureSpConnected
         ? "Service Principal (env vars)"
         : null,
-      icon: "☁",
+      icon: <FaMicrosoft className="h-5 w-5" />,
       status: azureOAuthConnected ? "oauth" as const : azureSpConnected ? "env" as const : "disconnected" as const,
       category: "cloud",
       description: azureOAuthAvailable
         ? "Sign in with Microsoft to auto-discover your subscriptions, resources, and AI services"
         : "Configure AZURE_AD_CLIENT_ID + SECRET in .env.local to enable OAuth, or use Service Principal env vars",
-      action: azureOAuthConnected
-        ? { label: "Connected via OAuth", onClick: () => {}, variant: "disabled" as const }
-        : azureOAuthAvailable
-        ? { label: "Sign in with Microsoft", onClick: () => signIn("microsoft-entra-id"), variant: "primary" as const }
+      action: azureOAuthAvailable
+        ? { label: azureOAuthConnected ? "Reconnect Microsoft" : "Sign in with Microsoft", onClick: () => signIn("microsoft-entra-id"), variant: azureOAuthConnected ? "secondary" as const : "primary" as const }
         : azureSpConnected
         ? { label: "Configured via env", onClick: () => {}, variant: "disabled" as const }
         : null,
@@ -377,7 +392,7 @@ function SettingsView({
       name: "OpenAI",
       connected: !!providerStatus?.openai,
       detail: null,
-      icon: "⚡",
+      icon: <SiOpenai className="h-5 w-5" />,
       status: providerStatus?.openai ? "env" as const : "disconnected" as const,
       category: "ai",
       description: providerStatus?.openai ? "Models and usage stats" : "Set OPENAI_API_KEY in .env.local",
@@ -387,7 +402,7 @@ function SettingsView({
       name: "Anthropic",
       connected: !!providerStatus?.anthropic,
       detail: null,
-      icon: "🔶",
+      icon: <SiAnthropic className="h-5 w-5" />,
       status: providerStatus?.anthropic ? "env" as const : "disconnected" as const,
       category: "ai",
       description: providerStatus?.anthropic ? "Claude models" : "Set ANTHROPIC_API_KEY in .env.local",
@@ -397,7 +412,7 @@ function SettingsView({
       name: "Ollama",
       connected: !!providerStatus?.ollama,
       detail: null,
-      icon: "🦙",
+      icon: <SiOllama className="h-5 w-5" />,
       status: "env" as const,
       category: "ai",
       description: "Auto-detected at localhost:11434",
@@ -407,7 +422,7 @@ function SettingsView({
       name: "HuggingFace",
       connected: !!providerStatus?.huggingface,
       detail: null,
-      icon: "🤗",
+      icon: <SiHuggingface className="h-5 w-5" />,
       status: providerStatus?.huggingface ? "env" as const : "disconnected" as const,
       category: "ai",
       description: providerStatus?.huggingface ? "Models and spaces" : "Set HUGGINGFACE_TOKEN in .env.local",
@@ -417,7 +432,7 @@ function SettingsView({
       name: "Vercel",
       connected: !!providerStatus?.vercel,
       detail: null,
-      icon: "▲",
+      icon: <SiVercel className="h-5 w-5" />,
       status: providerStatus?.vercel ? "env" as const : "disconnected" as const,
       category: "deploy",
       description: providerStatus?.vercel ? "Projects and deployments" : "Set VERCEL_TOKEN in .env.local",
@@ -425,23 +440,41 @@ function SettingsView({
     },
     {
       name: "GitLab",
-      connected: false,
+      connected: !!providerStatus?.gitlab,
       detail: null,
-      icon: "◆",
-      status: "coming-soon" as const,
+      icon: <SiGitlab className="h-5 w-5" />,
+      status: providerStatus?.gitlab ? "oauth" as const : "disconnected" as const,
       category: "source",
-      description: "Coming soon",
-      action: null,
+      description: providerStatus?.gitlab
+        ? "Repositories and pipelines via OAuth"
+        : "Set GITLAB_CLIENT_ID + GITLAB_CLIENT_SECRET in .env.local",
+      action: providerStatus?.gitlab
+        ? { label: "Sign in with GitLab", onClick: () => signIn("gitlab"), variant: "primary" as const }
+        : null,
     },
     {
       name: "AWS",
-      connected: false,
+      connected: !!providerStatus?.aws,
       detail: null,
-      icon: "◈",
-      status: "coming-soon" as const,
+      icon: <FaAws className="h-5 w-5" />,
+      status: providerStatus?.aws ? "env" as const : "disconnected" as const,
       category: "cloud",
-      description: "Coming soon",
+      description: providerStatus?.aws ? "Lambda, EC2, S3, DynamoDB, RDS discovery" : "Set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY in .env.local",
       action: null,
+    },
+    {
+      name: "Google Cloud",
+      connected: !!providerStatus?.gcpOAuthAvailable,
+      detail: null,
+      icon: <SiGooglecloud className="h-5 w-5" />,
+      status: providerStatus?.gcpOAuthAvailable ? "oauth" as const : "disconnected" as const,
+      category: "cloud",
+      description: providerStatus?.gcpOAuthAvailable
+        ? "Projects, VMs, Functions, Cloud Run, SQL, Storage via OAuth"
+        : "Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env.local",
+      action: providerStatus?.gcpOAuthAvailable
+        ? { label: "Sign in with Google", onClick: () => signIn("google"), variant: "primary" as const }
+        : null,
     },
   ];
 
@@ -494,7 +527,7 @@ function SettingsView({
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-xl">{p.icon}</span>
+                <span className="text-xl shrink-0">{p.icon}</span>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{p.name}</p>
@@ -514,6 +547,8 @@ function SettingsView({
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                     p.action.variant === "destructive"
                       ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                      : p.action.variant === "secondary"
+                      ? "border border-border text-foreground hover:bg-accent"
                       : "bg-primary text-primary-foreground hover:bg-primary/90"
                   }`}
                 >

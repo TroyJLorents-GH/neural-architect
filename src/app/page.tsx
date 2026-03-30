@@ -66,9 +66,9 @@ const providers = [
   { name: "Ollama", icon: "🦙", status: "live" },
   { name: "HuggingFace", icon: "🤗", status: "live" },
   { name: "Vercel", icon: "▲", status: "live" },
-  { name: "GitLab", icon: "◆", status: "soon" },
-  { name: "AWS", icon: "◈", status: "soon" },
-  { name: "GCP", icon: "◇", status: "soon" },
+  { name: "GitLab", icon: "◆", status: "live" },
+  { name: "AWS", icon: "◈", status: "live" },
+  { name: "GCP", icon: "◇", status: "live" },
 ];
 
 export default function LandingPage() {
@@ -234,6 +234,9 @@ export default function LandingPage() {
                 { label: "Pipelines", active: false },
                 { label: "AI Agents", active: false },
                 { label: "Models", active: false },
+                { label: "Azure", active: false },
+                { label: "AWS", active: false },
+                { label: "GCP", active: false },
                 { label: "Infrastructure", active: false },
               ].map((item) => (
                 <div

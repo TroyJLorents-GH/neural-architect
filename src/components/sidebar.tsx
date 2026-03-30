@@ -8,6 +8,7 @@ import {
   Bot,
   Brain,
   Cloud,
+  CloudCog,
   Server,
   Settings,
   ChevronLeft,
@@ -24,6 +25,8 @@ const navItems = [
   { icon: Bot, label: "AI Agents", id: "agents" },
   { icon: Brain, label: "Models", id: "models" },
   { icon: Cloud, label: "Azure", id: "azure" },
+  { icon: CloudCog, label: "AWS", id: "aws" },
+  { icon: Cloud, label: "GCP", id: "gcp" },
   { icon: Server, label: "Infrastructure", id: "infrastructure" },
   { icon: Settings, label: "Settings", id: "settings" },
 ];

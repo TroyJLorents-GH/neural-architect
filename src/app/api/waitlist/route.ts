@@ -1,17 +1,5 @@
 import { NextResponse } from "next/server";
-import path from "path";
-import fs from "fs/promises";
-
-const WAITLIST_FILE = path.join(process.cwd(), "waitlist.json");
-
-async function getWaitlist(): Promise<{ email: string; signedUpAt: string }[]> {
-  try {
-    const data = await fs.readFile(WAITLIST_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
@@ -25,32 +13,58 @@ export async function POST(request: Request) {
       );
     }
 
-    const waitlist = await getWaitlist();
-
     // Check for duplicate
-    if (waitlist.some((entry) => entry.email === email)) {
+    const { data: existing } = await supabase
+      .from("waitlist")
+      .select("id")
+      .eq("email", email)
+      .single();
+
+    if (existing) {
       return NextResponse.json({
         message: "You're already on the list!",
         alreadySignedUp: true,
       });
     }
 
-    waitlist.push({ email, signedUpAt: new Date().toISOString() });
-    await fs.writeFile(WAITLIST_FILE, JSON.stringify(waitlist, null, 2));
+    // Insert new signup
+    const { error } = await supabase
+      .from("waitlist")
+      .insert({ email, source: "landing" });
+
+    if (error) {
+      // Unique constraint violation (race condition)
+      if (error.code === "23505") {
+        return NextResponse.json({
+          message: "You're already on the list!",
+          alreadySignedUp: true,
+        });
+      }
+      throw error;
+    }
+
+    // Get position (total count)
+    const { count } = await supabase
+      .from("waitlist")
+      .select("*", { count: "exact", head: true });
 
     return NextResponse.json({
       message: "You're on the list!",
-      position: waitlist.length,
+      position: count || 1,
     });
   } catch (error) {
+    console.error("Waitlist error:", error);
     return NextResponse.json(
-      { error: "Failed to sign up", details: String(error) },
+      { error: "Failed to sign up" },
       { status: 500 }
     );
   }
 }
 
 export async function GET() {
-  const waitlist = await getWaitlist();
-  return NextResponse.json({ count: waitlist.length });
+  const { count } = await supabase
+    .from("waitlist")
+    .select("*", { count: "exact", head: true });
+
+  return NextResponse.json({ count: count || 0 });
 }

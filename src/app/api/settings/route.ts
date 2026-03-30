@@ -21,5 +21,8 @@ export async function GET() {
     ollama: true, // Always auto-detected, no key needed
     huggingface: !!process.env.HUGGINGFACE_TOKEN,
     vercel: !!process.env.VERCEL_TOKEN,
+    aws: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY),
+    gitlab: !!(process.env.GITLAB_CLIENT_ID && process.env.GITLAB_CLIENT_SECRET),
+    gcpOAuthAvailable: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
 }
