@@ -166,8 +166,8 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
       </DashboardSection>
     ),
     infrastructure: (
-      <DashboardSection id="infrastructure" title="Infrastructure" count={displayInfra.length}>
-        <InfraCards resources={displayInfra} vercelData={vercelData} compact />
+      <DashboardSection id="infrastructure" title="Infrastructure">
+        <InfraCards compact />
       </DashboardSection>
     ),
     repositories: (
@@ -265,7 +265,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
             {activeSection === "gcp" &&
               "Projects, VMs, Cloud Functions, Cloud Run, Cloud SQL, and Storage"}
             {activeSection === "infrastructure" &&
-              "Cloud resources, deployments, and local services"}
+              "All cloud resources across Azure, AWS, and GCP"}
             {activeSection === "settings" &&
               "Manage connected accounts and preferences"}
           </p>
@@ -324,7 +324,7 @@ export function DashboardView({ activeSection }: DashboardViewProps) {
         {activeSection === "aws" && <AwsView />}
         {activeSection === "gcp" && <GcpView />}
         {activeSection === "infrastructure" && (
-          <InfraCards resources={displayInfra} vercelData={vercelData} />
+          <InfraCards />
         )}
         {activeSection === "settings" && (
           <SettingsView

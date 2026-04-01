@@ -18,6 +18,9 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import { SiGithub, SiGitlab, SiOpenai, SiAnthropic, SiOllama, SiHuggingface, SiVercel, SiGooglecloud } from "react-icons/si";
+import { FaAws, FaMicrosoft } from "react-icons/fa6";
+import { AnimatedPreview } from "@/components/landing/animated-preview";
 
 const features = [
   {
@@ -58,17 +61,17 @@ const features = [
   },
 ];
 
-const providers = [
-  { name: "GitHub", icon: "⬡", status: "live" },
-  { name: "Azure", icon: "☁", status: "live" },
-  { name: "OpenAI", icon: "⚡", status: "live" },
-  { name: "Anthropic", icon: "🔶", status: "live" },
-  { name: "Ollama", icon: "🦙", status: "live" },
-  { name: "HuggingFace", icon: "🤗", status: "live" },
-  { name: "Vercel", icon: "▲", status: "live" },
-  { name: "GitLab", icon: "◆", status: "live" },
-  { name: "AWS", icon: "◈", status: "live" },
-  { name: "GCP", icon: "◇", status: "live" },
+const providers: { name: string; icon: React.ReactNode; status: string }[] = [
+  { name: "GitHub", icon: <SiGithub className="h-6 w-6" />, status: "live" },
+  { name: "Azure", icon: <FaMicrosoft className="h-6 w-6 text-[#00a4ef]" />, status: "live" },
+  { name: "OpenAI", icon: <SiOpenai className="h-6 w-6" />, status: "live" },
+  { name: "Anthropic", icon: <SiAnthropic className="h-6 w-6 text-[#d97757]" />, status: "live" },
+  { name: "Ollama", icon: <SiOllama className="h-6 w-6" />, status: "live" },
+  { name: "HuggingFace", icon: <SiHuggingface className="h-6 w-6 text-[#ffd21e]" />, status: "live" },
+  { name: "Vercel", icon: <SiVercel className="h-6 w-6" />, status: "live" },
+  { name: "GitLab", icon: <SiGitlab className="h-6 w-6 text-[#fc6d26]" />, status: "live" },
+  { name: "AWS", icon: <FaAws className="h-6 w-6 text-[#ff9900]" />, status: "live" },
+  { name: "GCP", icon: <SiGooglecloud className="h-6 w-6 text-[#4285f4]" />, status: "live" },
 ];
 
 export default function LandingPage() {
@@ -206,153 +209,7 @@ export default function LandingPage() {
 
       {/* Dashboard Preview */}
       <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/10 dark:shadow-black/40">
-          {/* Window chrome */}
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <div className="flex gap-1.5">
-              <div className="h-3 w-3 rounded-full bg-red-400" />
-              <div className="h-3 w-3 rounded-full bg-amber-400" />
-              <div className="h-3 w-3 rounded-full bg-emerald-400" />
-            </div>
-            <div className="mx-auto rounded-md bg-muted px-12 py-1 text-xs text-muted-foreground">
-              localhost:3000/dashboard
-            </div>
-          </div>
-          {/* Dashboard mockup */}
-          <div className="flex">
-            {/* Mini sidebar */}
-            <div className="hidden w-48 shrink-0 border-r border-border bg-card p-3 sm:block">
-              <div className="mb-4 flex items-center gap-2 px-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground">
-                  NA
-                </div>
-                <span className="text-xs font-semibold">Neural Architect</span>
-              </div>
-              {[
-                { label: "Dashboard", active: true },
-                { label: "Repositories", active: false },
-                { label: "Pipelines", active: false },
-                { label: "AI Agents", active: false },
-                { label: "Models", active: false },
-                { label: "Azure", active: false },
-                { label: "AWS", active: false },
-                { label: "GCP", active: false },
-                { label: "Infrastructure", active: false },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`mb-1 rounded-md px-2 py-1.5 text-xs ${
-                    item.active
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {item.label}
-                </div>
-              ))}
-            </div>
-            {/* Content area */}
-            <div className="flex-1 p-4 sm:p-6">
-              {/* Stat cards */}
-              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { label: "Repositories", value: "24" },
-                  { label: "Pipelines", value: "7" },
-                  { label: "AI Agents", value: "5" },
-                  { label: "Models", value: "12" },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-lg border border-border p-3"
-                  >
-                    <p className="text-lg font-bold sm:text-2xl">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {stat.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {/* Mock model cards */}
-              <div className="mb-2 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                <p className="text-xs font-medium">Models</p>
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  12
-                </span>
-                <span className="ml-1 flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600">
-                  <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                  2 local
-                </span>
-              </div>
-              <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  { name: "GPT-4o", provider: "Azure", icon: "☁" },
-                  { name: "Claude Opus 4.6", provider: "Anthropic", icon: "🔶" },
-                  { name: "Llama 3.3", provider: "Ollama", icon: "🦙" },
-                  { name: "GPT-5.2", provider: "OpenAI", icon: "⚡" },
-                ].map((m) => (
-                  <div
-                    key={m.name}
-                    className="rounded-lg border border-border p-2.5"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm">{m.icon}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {m.provider}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium">{m.name}</p>
-                  </div>
-                ))}
-              </div>
-              {/* Mock repo cards */}
-              <div className="mb-2 flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-muted-foreground" />
-                <p className="text-xs font-medium">Repositories</p>
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  24
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {[
-                  { name: "web-platform", lang: "TypeScript", color: "#3178c6" },
-                  { name: "data-pipeline", lang: "Python", color: "#3572a5" },
-                  { name: "auth-service", lang: "Go", color: "#00add8" },
-                ].map((r) => (
-                  <div
-                    key={r.name}
-                    className="rounded-lg border border-border p-2.5"
-                  >
-                    <p className="text-xs font-medium mb-1">{r.name}</p>
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: r.color }}
-                      />
-                      <span className="text-[10px] text-muted-foreground">
-                        {r.lang}
-                      </span>
-                    </div>
-                    {/* Mini sparkline */}
-                    <div className="mt-2 flex items-end gap-px h-4">
-                      {[3, 5, 2, 7, 4, 8, 6, 3, 5, 9, 4, 6].map((v, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 rounded-sm"
-                          style={{
-                            height: `${(v / 9) * 100}%`,
-                            backgroundColor: r.color,
-                            opacity: 0.6,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <AnimatedPreview />
       </section>
 
       {/* Features */}
@@ -407,7 +264,7 @@ export default function LandingPage() {
                     : "border-dashed border-border/60 opacity-50"
                 }`}
               >
-                <span className="text-2xl">{p.icon}</span>
+                <span className="flex items-center justify-center h-8">{p.icon}</span>
                 <span className="text-xs font-medium">{p.name}</span>
                 {p.status === "soon" && (
                   <span className="text-[10px] text-muted-foreground">
