@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate
-    const { data: existing } = await supabase
+    const { data: existing } = await getSupabase()
       .from("waitlist")
       .select("id")
       .eq("email", email)
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Insert new signup
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from("waitlist")
       .insert({ email, source: "landing" });
 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // Get position (total count)
-    const { count } = await supabase
+    const { count } = await getSupabase()
       .from("waitlist")
       .select("*", { count: "exact", head: true });
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const { count } = await supabase
+  const { count } = await getSupabase()
     .from("waitlist")
     .select("*", { count: "exact", head: true });
 

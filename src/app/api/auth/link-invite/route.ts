@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 // Called after sign-in to link the provider account to an invite token
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Verify the token is valid
-    const { data: waitlistEntry, error: findError } = await supabase
+    const { data: waitlistEntry, error: findError } = await getSupabase()
       .from("waitlist")
       .select("id, status")
       .eq("invite_token", invite_token)
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const userName = session.user.name || "";
 
     // Insert into approved_accounts (upsert to handle re-links)
-    const { error: insertError } = await supabase
+    const { error: insertError } = await getSupabase()
       .from("approved_accounts")
       .upsert(
         {

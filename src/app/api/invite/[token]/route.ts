@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function GET(
   _request: Request,
@@ -11,7 +11,7 @@ export async function GET(
     return NextResponse.json({ valid: false, error: "No token provided" });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("waitlist")
     .select("email, status, invite_token")
     .eq("invite_token", token)

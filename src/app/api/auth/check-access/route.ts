@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 // Check if the current user has been approved via an invite
 export async function GET() {
@@ -28,7 +28,7 @@ export async function GET() {
     }
 
     // Check approved_accounts table
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from("approved_accounts")
       .select("id")
       .eq("provider_account_id", identifier)
@@ -42,7 +42,7 @@ export async function GET() {
     // Also check if their email is directly approved on the waitlist
     // (covers the case where admin approved them but they haven't linked yet)
     if (userEmail) {
-      const { data: waitlistEntry } = await supabase
+      const { data: waitlistEntry } = await getSupabase()
         .from("waitlist")
         .select("id, status, invite_token")
         .eq("email", userEmail.toLowerCase())
@@ -51,7 +51,7 @@ export async function GET() {
 
       if (waitlistEntry) {
         // Auto-link their account since their email matches
-        await supabase
+        await getSupabase()
           .from("approved_accounts")
           .upsert(
             {

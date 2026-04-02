@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     // Find the waitlist entry
-    const { data: entry, error: findError } = await supabase
+    const { data: entry, error: findError } = await getSupabase()
       .from("waitlist")
       .select("*")
       .eq("email", email.toLowerCase().trim())
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     // Generate invite token and approve
     const inviteToken = crypto.randomUUID();
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from("waitlist")
       .update({
         status: "approved",
