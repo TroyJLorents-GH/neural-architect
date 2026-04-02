@@ -37,6 +37,8 @@ jobs:
           AUTH_SECRET: placeholder-for-build
           GITHUB_CLIENT_ID: placeholder-for-build
           GITHUB_CLIENT_SECRET: placeholder-for-build
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_ANON_KEY: placeholder-for-build
 
   # Build and push Docker image (only on push to master)
   docker:
