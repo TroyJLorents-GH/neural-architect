@@ -157,7 +157,7 @@ export function AnimatedPreview() {
           <div className="h-3 w-3 rounded-full bg-emerald-400" />
         </div>
         <div className="mx-auto rounded-md bg-muted px-12 py-1 text-xs text-muted-foreground">
-          localhost:3000/dashboard
+          neural-architect-black.vercel.app/dashboard
         </div>
       </div>
 
